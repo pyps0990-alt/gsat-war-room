@@ -513,6 +513,7 @@
     renderChart();
     renderRewards();
     renderMistakes();
+    renderTabDot();
   }
 
   /* ============================================================
@@ -1029,6 +1030,34 @@
     });
   }
 
+  /* 手機分頁切換 */
+  function setView(name) {
+    document.body.dataset.view = name;
+    $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === name)));
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    // 圖表在隱藏狀態下量不到寬度，切到「進度」時要重畫
+    if (name === 'stats') requestAnimationFrame(renderChart);
+  }
+
+  function bindTabs() {
+    document.body.dataset.view = 'today';
+    $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.view)));
+
+    // 桌機顯示全部，不受分頁影響；縮回手機時回到「今日」
+    const mq = window.matchMedia('(max-width: 980px)');
+    mq.addEventListener('change', (e) => {
+      if (e.matches) setView('today');
+      else renderChart();
+    });
+  }
+
+  /* 錯題分頁的待重寫提示點 */
+  function renderTabDot() {
+    const due = store.data.mistakes.filter(isDue).length;
+    const dot = $('#tabDot');
+    if (dot) dot.hidden = due === 0;
+  }
+
   /* 游標微互動（僅桌機） */
   function bindCursor() {
     if (reduceMotion || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
@@ -1072,6 +1101,7 @@
     bindCertificate();
     bindDialogs();
     bindBackup();
+    bindTabs();
     bindCursor();
     renderAll();
 
