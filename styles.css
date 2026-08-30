@@ -254,9 +254,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .link-btn:hover { color: var(--primary); border-color: var(--primary); }
 
 /* ---------- Bento grid ---------- */
+/* 用 minmax(0, 1fr) 而非 1fr：1fr 的自動最小值是 min-content，
+   長 placeholder 的輸入框會把欄位撐得比容器還寬而溢出 */
 .bento {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;   /* 同一列的卡片等高，避免底部留洞 */
 }
@@ -281,11 +283,11 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 @media (max-width: 980px) {
-  .bento { grid-template-columns: repeat(2, 1fr); }
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .span-3, .span-4 { grid-column: span 2; }
 }
 @media (max-width: 640px) {
-  .bento { grid-template-columns: 1fr; gap: 14px; }
+  .bento { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .span-2, .span-3, .span-4 { grid-column: span 1; }
   .card { padding: 20px; }
 }
@@ -446,11 +448,11 @@ input, select, textarea { font: inherit; color: inherit; }
 /* 固定 14 欄；窄螢幕改成 7 欄兩排（剛好一排一週） */
 .heat {
   display: grid;
-  grid-template-columns: repeat(14, 1fr);
+  grid-template-columns: repeat(14, minmax(0, 1fr));
   gap: 6px;
 }
 @media (max-width: 760px) {
-  .heat { grid-template-columns: repeat(7, 1fr); }
+  .heat { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 .heat-cell {
   aspect-ratio: 1;
@@ -684,8 +686,9 @@ input, select, textarea { font: inherit; color: inherit; }
 
 .btn-sm { padding: 6px 14px; font-size: 13.5px; min-height: 36px; border-radius: 10px; }
 
-input[type="text"], input[type="number"], input[type="date"], select {
+input[type="text"], input[type="number"], input[type="date"], input[type="email"], select {
   width: 100%;
+  min-width: 0;   /* 讓輸入框能縮到比固有最小寬更窄，避免撐爆格線／彈性容器 */
   padding: 11px 14px;
   min-height: 44px;
   border: 1px solid var(--border);
@@ -705,7 +708,7 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
 
 .mistake-form {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   padding: 18px;
   border: 1px solid var(--border);
@@ -717,7 +720,7 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
 .field-full { grid-column: span 3; }
 .mistake-form .btn { grid-column: span 3; justify-self: start; }
 @media (max-width: 640px) {
-  .mistake-form { grid-template-columns: 1fr; padding: 15px; }
+  .mistake-form { grid-template-columns: minmax(0, 1fr); padding: 15px; }
   .field-grow, .field-full, .mistake-form .btn { grid-column: span 1; }
   .mistake-form .btn { justify-self: stretch; }
 }
