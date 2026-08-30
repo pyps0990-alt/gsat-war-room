@@ -1106,7 +1106,8 @@
         <div class="task-edit-fields">
           <input type="text" class="te-name" data-i="${i}" value="${esc(t.name)}"
                  maxlength="20" placeholder="項目名稱" aria-label="第 ${i + 1} 項名稱">
-          <input type="text" class="te-note" data-i="${i}" value="${esc(t.note || '')}"
+          <input type="text" class="te-note" data-i="${i}"
+                 value="${esc((t.note || '').replace('{goal}', store.data.goalHours))}"
                  maxlength="30" placeholder="說明（選填）" aria-label="第 ${i + 1} 項說明">
         </div>
         <button class="mi-del" type="button" data-task-del="${i}"
