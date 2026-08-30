@@ -443,16 +443,21 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- 熱力圖 ---------- */
-.heat { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 固定 14 欄；窄螢幕改成 7 欄兩排（剛好一排一週） */
+.heat {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 6px;
+}
+@media (max-width: 760px) {
+  .heat { grid-template-columns: repeat(7, 1fr); }
+}
 .heat-cell {
-  flex: 1 1 auto;
-  min-width: 24px;
   aspect-ratio: 1;
   max-height: 46px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  position: relative;
   transition: transform .22s var(--ease), background-color .3s var(--ease);
 }
 @media (hover: hover) { .heat-cell:hover { transform: translateY(-3px) scale(1.06); } }
@@ -488,8 +493,8 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 [data-theme="dark"] .seg-btn[aria-pressed="true"] { color: #1C1A18; }
 
-.chart-wrap { width: 100%; overflow-x: auto; }
-.chart-svg { width: 100%; height: auto; display: block; min-width: 320px; }
+.chart-wrap { width: 100%; }
+.chart-svg { width: 100%; height: auto; display: block; }
 .chart-bar { transition: opacity .2s var(--ease); }
 .chart-bar:hover { opacity: .72; }
 
@@ -544,6 +549,17 @@ input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 640px) {
   .card-quote { padding: 24px 22px; }
   .quote-mark { margin-bottom: 16px; }
+}
+
+/* 手機：按鈕與備份列改為整行，避免出現孤零零的小按鈕 */
+@media (max-width: 640px) {
+  .reward-form { gap: 8px; }
+  .reward-form #rewardName, .reward-form #rewardPrice { flex: 1 1 100%; }
+  .reward-form .btn { width: 100%; }
+  .backup-bar { flex-direction: column; align-items: stretch; text-align: center; }
+  .backup-bar .btn { width: 100%; }
+  .chart-stats { gap: 18px; }
+  .due-banner .btn, .cert-actions .btn { width: 100%; }
 }
 
 /* ---------- 兌換證書 ---------- */

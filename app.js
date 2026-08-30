@@ -320,11 +320,18 @@
       days.push({ date: dateStr, hours: (store.data.days[dateStr] || {}).hours || 0 });
     }
 
-    const W = 720, H = 200, padL = 34, padR = 8, padT = 12, padB = 26;
+    // viewBox 跟著容器寬度走，手機上長條才不會被壓扁
+    const wrapW = Math.round($('.chart-wrap')?.clientWidth || 720);
+    const narrow = wrapW < 520;
+    const W = Math.max(280, wrapW);
+    const H = narrow ? 200 : 210;
+    const padL = narrow ? 26 : 34, padR = 8, padT = 12, padB = 26;
+    $('#chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
+
     const iw = W - padL - padR, ih = H - padT - padB;
     const maxH = Math.max(store.data.goalHours, ...days.map((d) => d.hours), 1);
     const top = Math.ceil(maxH * 1.15);
-    const gap = chartRange > 14 ? 2 : 5;
+    const gap = chartRange > 14 ? 2 : narrow ? 4 : 5;
     const bw = Math.max(2, (iw - gap * (days.length - 1)) / days.length);
     const css = getComputedStyle(document.documentElement);
     const cPrimary = css.getPropertyValue('--primary').trim();
@@ -355,8 +362,8 @@
       } else {
         svg += `<rect x="${round1(x)}" y="${padT + ih - 2}" width="${round1(bw)}" height="2" rx="1" fill="${cBorder}"><title>${fmtDate(d.date)}：未記錄</title></rect>`;
       }
-      // 標籤：7 天全標，30 天每 5 天標一次
-      const step = chartRange > 14 ? 5 : 1;
+      // 標籤：7 天全標，30 天每 5 天標一次（窄螢幕再放寬間隔避免重疊）
+      const step = chartRange > 14 ? (narrow ? 7 : 5) : 1;
       if (i % step === 0 || i === days.length - 1) {
         const [, m, dd] = d.date.split('-');
         svg += `<text x="${round1(x + bw / 2)}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="${cMuted}">${Number(m)}/${Number(dd)}</text>`;
@@ -560,6 +567,13 @@
       $$('.seg-btn').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       renderChart();
     }));
+
+    // 視窗尺寸改變時重畫，讓 viewBox 跟上新的容器寬度
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(renderChart, 180);
+    });
   }
 
   /* ---------- 兌換儀式：證書 + 紙屑 + 寄信 ---------- */
