@@ -1,0 +1,11 @@
+# 本機開發工具設定
+.claude/
+.vercel/
+
+# 作業系統
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 相依套件
+node_modules/

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="116 學測複習戰情室 — 每日打卡、點數獎勵、錯題本與倒數計時。">
+<meta name="theme-color" content="#F9F6F0">
+<title>學測戰情室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%233A5A40'/%3E%3Ccircle cx='43' cy='21' r='6' fill='%23C86D51'/%3E%3Cpath d='M8 48 L24 22 L33 36 L39 27 L56 48 Z' fill='%23FFFDF9'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%233A5A40'/%3E%3Ccircle cx='43' cy='21' r='6' fill='%23C86D51'/%3E%3Cpath d='M8 48 L24 22 L33 36 L39 27 L56 48 Z' fill='%23FFFDF9'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+
+<a class="skip-link" href="#main">跳至主要內容</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><circle cx="43" cy="21" r="6" fill="#C86D51"/><path d="M8 48 L24 22 L33 36 L39 27 L56 48 Z" fill="currentColor"/></svg>
+      </span>
+      <div>
+        <h1>學測戰情室</h1>
+        <p class="brand-sub">穩住配速，我們頂峰相見</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeToggle" type="button" aria-pressed="false" aria-label="切換深色模式">
+      <span class="icon-sun" aria-hidden="true">☾</span>
+    </button>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+
+  <!-- 倒數計時 -->
+  <section class="countdown card" aria-labelledby="cdTitle">
+    <div class="countdown-head">
+      <h2 id="cdTitle" class="eyebrow">距離學測還有</h2>
+      <button class="link-btn" type="button" id="editExamDate">修改考試日期</button>
+    </div>
+    <p class="countdown-days" id="cdDays" aria-live="polite"><span class="num">—</span><span class="unit">天</span></p>
+    <p class="countdown-detail" id="cdDetail">計算中…</p>
+    <div class="countdown-bar" role="img" aria-label="備考進度">
+      <div class="countdown-bar-fill" id="cdBar"></div>
+    </div>
+  </section>
+
+  <!-- Bento 主格 -->
+  <div class="bento">
+
+    <!-- 今日打卡 -->
+    <section class="card card-checkin span-2" aria-labelledby="ciTitle">
+      <div class="card-head">
+        <h2 id="ciTitle">今日打卡</h2>
+        <span class="date-chip" id="todayChip"></span>
+      </div>
+
+      <ul class="task-list" id="taskList">
+        <li>
+          <label class="task">
+            <input type="checkbox" data-task="study">
+            <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12.5 9.5,18 20,6.5"/></svg></span>
+            <span class="task-text">
+              <span class="task-name">讀書時數達標</span>
+              <span class="task-note">今天讀滿 <b id="goalHint">3</b> 小時</span>
+            </span>
+            <span class="task-pt">+10</span>
+          </label>
+        </li>
+        <li>
+          <label class="task">
+            <input type="checkbox" data-task="fix">
+            <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12.5 9.5,18 20,6.5"/></svg></span>
+            <span class="task-text">
+              <span class="task-name">訂正錯題達標</span>
+              <span class="task-note">至少 1 題並收錄進錯題本</span>
+            </span>
+            <span class="task-pt">+10</span>
+          </label>
+        </li>
+        <li>
+          <label class="task">
+            <input type="checkbox" data-task="todo">
+            <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12.5 9.5,18 20,6.5"/></svg></span>
+            <span class="task-text">
+              <span class="task-name">完成今日待辦</span>
+              <span class="task-note">複習觀念 ＋ 寫題本 ＋ 訂正</span>
+            </span>
+            <span class="task-pt">+10</span>
+          </label>
+        </li>
+      </ul>
+
+      <div class="hours-row">
+        <label for="hoursInput">今日讀書時數</label>
+        <div class="hours-control">
+          <button class="step-btn" type="button" data-step="-0.5" aria-label="減少 0.5 小時">−</button>
+          <input id="hoursInput" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal">
+          <button class="step-btn" type="button" data-step="0.5" aria-label="增加 0.5 小時">＋</button>
+          <span class="hours-unit">小時</span>
+        </div>
+      </div>
+
+      <div class="checkin-footer">
+        <p class="today-points" aria-live="polite">今日獲得 <b id="todayPts">0</b> 點<span class="perfect-tag" id="perfectTag" hidden>全勤 +10</span></p>
+        <p class="hint">三項全達成再加碼 10 點，單日最高 40 點。</p>
+      </div>
+    </section>
+
+    <!-- 連續天數 -->
+    <section class="card card-streak" aria-labelledby="stTitle">
+      <h2 id="stTitle" class="eyebrow">連續全勤</h2>
+      <p class="streak-num"><span id="streakNum">0</span><span class="unit">天</span></p>
+      <p class="streak-note" id="streakNote">今天還沒全勤，補上就能接續。</p>
+      <ul class="milestones" id="milestones"></ul>
+    </section>
+
+    <!-- 點數餘額 -->
+    <section class="card card-points" aria-labelledby="ptTitle">
+      <h2 id="ptTitle" class="eyebrow">點數餘額</h2>
+      <p class="points-num"><span id="balance">0</span><span class="unit">點</span></p>
+      <p class="points-cash">≈ <b id="balanceCash">0</b> 元（1 點 = 2 元）</p>
+      <dl class="points-break">
+        <div><dt>累積獲得</dt><dd id="earned">0</dd></div>
+        <div><dt>已兌換</dt><dd id="spent">0</dd></div>
+      </dl>
+    </section>
+
+    <!-- 讀書時間統計 -->
+    <section class="card card-chart span-4" aria-labelledby="chTitle">
+      <div class="card-head">
+        <h2 id="chTitle">讀書時間統計</h2>
+        <div class="chart-toggle" role="group" aria-label="統計區間">
+          <button class="seg-btn" type="button" data-range="7" aria-pressed="true">近 7 天</button>
+          <button class="seg-btn" type="button" data-range="30" aria-pressed="false">近 30 天</button>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg class="chart-svg" id="chart" viewBox="0 0 720 200" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="chartDesc"></svg>
+        <p id="chartDesc" class="visually-hidden"></p>
+        <table class="visually-hidden" id="chartTable"><caption>每日讀書時數</caption></table>
+      </div>
+      <dl class="chart-stats">
+        <div><dt>本週總時數</dt><dd id="statWeek">0</dd></div>
+        <div><dt>日均</dt><dd id="statAvg">0</dd></div>
+        <div><dt>與上週相比</dt><dd id="statTrend">—</dd></div>
+      </dl>
+    </section>
+
+    <!-- 本週節奏 -->
+    <section class="card card-week span-2" aria-labelledby="wkTitle">
+      <div class="card-head">
+        <h2 id="wkTitle">近 14 天節奏</h2>
+        <span class="muted" id="weekSummary"></span>
+      </div>
+      <div class="heat" id="heat" role="img" aria-label="近 14 天打卡熱力圖"></div>
+      <div class="legend">
+        <span class="muted">未打卡</span>
+        <span class="dot l0"></span><span class="dot l1"></span><span class="dot l2"></span><span class="dot l3"></span>
+        <span class="muted">全勤</span>
+      </div>
+    </section>
+
+    <!-- 獎勵清單 -->
+    <section class="card card-rewards span-2" aria-labelledby="rwTitle">
+      <div class="card-head">
+        <h2 id="rwTitle">獎勵清單</h2>
+        <span class="muted">1 點 = 2 元</span>
+      </div>
+      <form class="reward-form" id="rewardForm">
+        <input type="text" id="rewardName" placeholder="想要的獎勵，例如：Razer Viper V4 Pro" aria-label="獎勵名稱" required maxlength="40">
+        <input type="number" id="rewardPrice" placeholder="價格" aria-label="價格（元）" min="1" step="1" required>
+        <button class="btn btn-ghost" type="submit">加入</button>
+      </form>
+      <ul class="reward-list" id="rewardList"></ul>
+      <p class="empty" id="rewardEmpty">還沒有獎勵。先想好一個真的會讓你想爬起來讀書的東西。</p>
+    </section>
+
+    <!-- 每日金句 -->
+    <section class="card card-quote span-2" aria-labelledby="qtTitle">
+      <h2 id="qtTitle" class="visually-hidden">今日金句</h2>
+      <span class="quote-mark" aria-hidden="true"></span>
+      <div class="quote-body">
+        <p class="quote-text" id="quoteText">—</p>
+        <p class="quote-source" id="quoteSource"></p>
+      </div>
+      <button class="btn btn-ghost btn-sm quote-refresh" type="button" id="quoteNext">換一句</button>
+    </section>
+
+    <!-- 錯題本 -->
+    <section class="card card-mistakes span-4" aria-labelledby="mkTitle">
+      <div class="card-head">
+        <h2 id="mkTitle">錯題本</h2>
+        <div class="filters" id="subjectFilter" role="group" aria-label="科目篩選"></div>
+      </div>
+
+      <form class="mistake-form" id="mistakeForm">
+        <div class="field field-grow">
+          <label for="mkSummary">題目簡述</label>
+          <input type="text" id="mkSummary" placeholder="例如：等速圓周運動向心力方向判斷" required maxlength="80">
+        </div>
+        <div class="field">
+          <label for="mkSubject">科目</label>
+          <select id="mkSubject"></select>
+        </div>
+        <div class="field">
+          <label for="mkUnit">單元</label>
+          <input type="text" id="mkUnit" placeholder="選填" maxlength="30">
+        </div>
+        <div class="field field-full">
+          <span class="field-label">錯誤原因</span>
+          <div class="chips" id="reasonChips"></div>
+        </div>
+        <div class="image-drop" id="imageDrop">
+          <img class="image-preview" id="imagePreview" alt="已選擇的題目圖片預覽" hidden>
+          <p class="image-drop-text" id="imageDropText">附上題目截圖：拖曳、貼上（Ctrl+V），或點右方按鈕選擇／拍照。</p>
+          <input type="file" id="imageInput" accept="image/*" hidden>
+          <button class="btn btn-ghost btn-sm" type="button" id="imagePick">選擇圖片</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="imageClear" hidden>移除</button>
+        </div>
+        <button class="btn btn-primary" type="submit">收錄錯題</button>
+      </form>
+
+      <div class="due-banner" id="dueBanner" hidden>
+        <p>今天有 <strong id="dueCount">0</strong> 題該重寫了。趁記憶還在，先把它們解決掉。</p>
+        <button class="btn btn-ghost btn-sm" type="button" id="dueJump">只看待重寫</button>
+      </div>
+
+      <ul class="mistake-list" id="mistakeList"></ul>
+      <p class="empty" id="mistakeEmpty">錯題本還是空的。今天訂正的第一題，就從這裡開始。</p>
+    </section>
+
+  </div>
+
+  <div class="backup-bar">
+    <p class="backup-status" id="backupStatus">資料存在這台裝置的瀏覽器裡。建議定期匯出備份，換裝置或清除瀏覽器資料時才不會遺失。</p>
+    <button class="btn btn-ghost btn-sm" type="button" id="exportBtn">匯出備份</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="importBtn">匯入備份</button>
+    <input type="file" id="importInput" accept="application/json" hidden>
+  </div>
+
+  <div class="backup-bar" id="googleBar" hidden>
+    <p class="backup-status" id="gStatus"></p>
+    <button class="btn btn-primary btn-sm" type="button" id="gSignIn" hidden>連結 Google 帳號</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="gBackup" hidden>備份到 Drive</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="gRestore" hidden>從 Drive 還原</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="gSignOut" hidden>取消連結</button>
+  </div>
+
+  <p class="footnote"><button class="link-btn" type="button" id="settingsBtn">設定每日時數目標</button> · <button class="link-btn" type="button" id="resetBtn">清除全部資料</button></p>
+</main>
+
+<!-- 修改考試日期 -->
+<dialog id="examDialog">
+  <h2>考試日期</h2>
+  <p class="dialog-note">設定 116 學測的第一天，倒數與進度條會依此計算。</p>
+  <div class="field">
+    <label for="examInput">考試日期</label>
+    <input type="date" id="examInput">
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost btn-sm" type="button" data-close>取消</button>
+    <button class="btn btn-primary btn-sm" type="button" id="examSave">儲存</button>
+  </div>
+</dialog>
+
+<!-- 每日時數目標 -->
+<dialog id="goalDialog">
+  <h2>每日讀書時數目標</h2>
+  <p class="dialog-note">今日讀書時數達到這個數字，「讀書時數達標」就會自動打勾。</p>
+  <div class="field">
+    <label for="goalInput">目標時數</label>
+    <input type="number" id="goalInput" min="0.5" max="16" step="0.5">
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost btn-sm" type="button" data-close>取消</button>
+    <button class="btn btn-primary btn-sm" type="button" id="goalSave">儲存</button>
+  </div>
+</dialog>
+
+<!-- 兌換證書 -->
+<dialog id="certDialog" aria-labelledby="certName">
+  <div class="cert">
+    <p class="cert-eyebrow">兌 換 證 書</p>
+    <p class="cert-name" id="certName">—</p>
+    <p class="cert-sub" id="certSub"></p>
+    <dl class="cert-meta">
+      <div><dt>花費點數</dt><dd id="certCost">0</dd></div>
+      <div><dt>等值</dt><dd id="certCash">0</dd></div>
+      <div><dt>連續全勤</dt><dd id="certStreak">0</dd></div>
+    </dl>
+    <p class="cert-quote" id="certQuote"></p>
+    <div class="cert-seal" aria-hidden="true">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#C86D51" stroke-width="4"/>
+        <circle cx="50" cy="50" r="37" fill="none" stroke="#C86D51" stroke-width="1.5"/>
+        <text x="50" y="43" text-anchor="middle" font-size="26" font-weight="700" fill="#C86D51" font-family="Noto Serif TC, serif">兌換</text>
+        <text x="50" y="70" text-anchor="middle" font-size="19" font-weight="700" fill="#C86D51" font-family="Noto Serif TC, serif">達成</text>
+      </svg>
+    </div>
+    <div class="cert-actions">
+      <button class="btn btn-primary btn-sm" type="button" id="certMail">寄一份到我的信箱</button>
+      <button class="btn btn-ghost btn-sm" type="button" data-close>收下了</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- 收件信箱 -->
+<dialog id="mailDialog">
+  <h2>寄送兌換證書</h2>
+  <p class="dialog-note">填一次就好，之後每次兌換都會寄到這個信箱。</p>
+  <div class="field">
+    <label for="mailInput">收件信箱</label>
+    <input type="email" id="mailInput" placeholder="you@example.com" autocomplete="email">
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost btn-sm" type="button" data-close>取消</button>
+    <button class="btn btn-primary btn-sm" type="button" id="mailSave">寄出</button>
+  </div>
+</dialog>
+
+<!-- 圖片放大 -->
+<dialog id="lightbox">
+  <button class="lb-close" type="button" data-close aria-label="關閉">✕</button>
+  <img id="lightboxImg" alt="題目圖片">
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="./app.js"></script>
+<script src="./google.js"></script>
+</body>
+</html>
