@@ -90,6 +90,7 @@
     theme: null,
     email: '',
     quoteOffset: 0,
+    zoom: 1,
     updatedAt: new Date().toISOString()
   });
 
@@ -320,8 +321,10 @@
       days.push({ date: dateStr, hours: (store.data.days[dateStr] || {}).hours || 0 });
     }
 
-    // viewBox 跟著容器寬度走，手機上長條才不會被壓扁
-    const wrapW = Math.round($('.chart-wrap')?.clientWidth || 720);
+    // viewBox 跟著容器寬度走，手機上長條才不會被壓扁。
+    // 分頁隱藏時量到 0，這時不畫；等 ResizeObserver 在變成可見時再叫一次。
+    const wrapW = Math.round($('.chart-wrap')?.clientWidth || 0);
+    if (!wrapW) return;
     const narrow = wrapW < 520;
     const W = Math.max(280, wrapW);
     const H = narrow ? 200 : 210;
@@ -569,7 +572,8 @@
       renderChart();
     }));
 
-    // 視窗尺寸改變時重畫，讓 viewBox 跟上新的容器寬度
+    // 轉向或改變視窗大小時重畫，讓 viewBox 跟上新的容器寬度。
+    // （分頁切換造成的顯示／隱藏由 setView 直接處理。）
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
@@ -1030,13 +1034,33 @@
     });
   }
 
+  /* 顯示大小：加到主畫面後 iOS 停用雙指縮放，改由 app 自己提供 */
+  function applyZoom(z) {
+    document.documentElement.style.zoom = z === 1 ? '' : String(z);
+    $$('.zoom-ctrl .seg-btn').forEach((b) =>
+      b.setAttribute('aria-pressed', String(Number(b.dataset.zoom) === z)));
+  }
+
+  function bindZoom() {
+    applyZoom(store.data.zoom || 1);
+    $$('.zoom-ctrl .seg-btn').forEach((b) => b.addEventListener('click', () => {
+      const z = Number(b.dataset.zoom);
+      store.data.zoom = z;
+      store.save();
+      applyZoom(z);
+      renderChart();   // 容器寬度變了，圖表要重畫
+    }));
+  }
+
   /* 手機分頁切換 */
   function setView(name) {
     document.body.dataset.view = name;
     $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === name)));
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-    // 圖表在隱藏狀態下量不到寬度，切到「進度」時要重畫
-    if (name === 'stats') requestAnimationFrame(renderChart);
+    // 讀 offsetHeight 強制同步套用新版面，圖表才量得到容器寬度；
+    // 仍隱藏時 renderChart 會自行略過。
+    void document.body.offsetHeight;
+    renderChart();
   }
 
   function bindTabs() {
@@ -1101,6 +1125,7 @@
     bindCertificate();
     bindDialogs();
     bindBackup();
+    bindZoom();
     bindTabs();
     bindCursor();
     renderAll();

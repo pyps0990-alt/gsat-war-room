@@ -860,6 +860,23 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
   line-height: 2;
 }
 
+/* ---------- 顯示設定 ---------- */
+.settings-card { margin-top: 26px; }
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.setting-text { flex: 1; min-width: 180px; }
+.setting-name { font-size: 15.5px; }
+.setting-note { font-size: 13px; color: var(--text-2); line-height: 1.55; margin-top: 2px; }
+.zoom-ctrl { display: flex; gap: 6px; flex-wrap: wrap; }
+.zoom-ctrl .seg-btn { min-height: 38px; padding: 6px 15px; }
+@media (max-width: 640px) {
+  .setting-row { align-items: stretch; }
+  .zoom-ctrl { width: 100%; }
+  .zoom-ctrl .seg-btn { flex: 1; }
+}
+
 .backup-bar {
   display: flex; align-items: center; justify-content: center;
   gap: 12px; flex-wrap: wrap;
