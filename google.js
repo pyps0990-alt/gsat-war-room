@@ -10,7 +10,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_ID = '';   // ← 貼上你的 OAuth 用戶端 ID（結尾是 .apps.googleusercontent.com）
+  const CLIENT_ID = '175245453159-2ttjmdu5ehf9ss34r00ddbk7q8j09b8f.apps.googleusercontent.com';   // ← 貼上你的 OAuth 用戶端 ID（結尾是 .apps.googleusercontent.com）
 
   const SCOPES = [
     'https://www.googleapis.com/auth/gmail.send',
