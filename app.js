@@ -7,7 +7,20 @@
 
   const KEY = 'gsat-war-room-v1';
   const POINT_VALUE = 2;            // 1 點 = 2 元
-  const TASKS = ['study', 'fix', 'todo'];
+  const PT_PER_TASK = 10;           // 每項 10 點，全部達成再加 10
+  const MIN_TASKS = 2, MAX_TASKS = 6;
+
+  // 舊版沒有 taskIds 快照的日子，一律用這三項計分（保留、不重算）
+  const LEGACY_TASK_IDS = ['study', 'fix', 'todo'];
+
+  const DEFAULT_TASKS = () => [
+    { id: 'study', name: '讀書時數達標', note: '今天讀滿 {goal} 小時', auto: 'hours' },
+    { id: 'fix', name: '訂正錯題達標', note: '至少 1 題並收錄進錯題本', auto: 'mistake' },
+    { id: 'todo', name: '完成今日待辦', note: '複習觀念 ＋ 寫題本 ＋ 訂正' }
+  ];
+
+  const taskIds = () => store.data.tasks.map((t) => t.id);
+  const autoTaskId = (kind) => (store.data.tasks.find((t) => t.auto === kind) || {}).id;
   const REVIEW_STEPS = [1, 3, 7, 30]; // 天
   const SUBJECTS = ['國文', '英文', '數A', '物理', '化學', '生物', '地科'];
   const REASONS = ['觀念混淆', '計算失誤', '審題粗心', '公式不熟', '題型新穎'];
@@ -84,6 +97,7 @@
   const defaults = () => ({
     examDate: '2027-01-22',
     goalHours: 3,
+    tasks: DEFAULT_TASKS(),
     days: {},
     mistakes: [],
     rewards: [],
@@ -115,8 +129,11 @@
       }
     },
     day(dateStr) {
-      if (!this.data.days[dateStr]) this.data.days[dateStr] = { study: false, fix: false, todo: false, hours: 0 };
-      return this.data.days[dateStr];
+      const days = this.data.days;
+      if (!days[dateStr]) days[dateStr] = { hours: 0, taskIds: taskIds() };
+      // 今天永遠跟著目前的項目設定；過去的日子保留當時的快照，不重算
+      if (dateStr === today()) days[dateStr].taskIds = taskIds();
+      return days[dateStr];
     }
   };
 
@@ -182,13 +199,19 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
   }
 
-  /* ---------- 計分 ---------- */
+  /* ---------- 計分 ----------
+     每天用自己的 taskIds 快照計分；沒有快照的舊紀錄沿用原本三項。 */
+  const idsOf = (d) => (d && d.taskIds && d.taskIds.length ? d.taskIds : LEGACY_TASK_IDS);
+  const doneCount = (d) => idsOf(d).filter((id) => d[id]).length;
+
   const dayPoints = (d) => {
     if (!d) return 0;
-    const n = TASKS.filter((t) => d[t]).length;
-    return n * 10 + (n === 3 ? 10 : 0);
+    const ids = idsOf(d);
+    const n = doneCount(d);
+    return n * PT_PER_TASK + (n === ids.length ? PT_PER_TASK : 0);
   };
-  const isPerfect = (d) => !!d && TASKS.every((t) => d[t]);
+  const isPerfect = (d) => !!d && idsOf(d).every((id) => d[id]);
+  const maxDayPoints = () => (store.data.tasks.length + 1) * PT_PER_TASK;
 
   const totalEarned = () => Object.values(store.data.days).reduce((s, d) => s + dayPoints(d), 0);
   const totalSpent = () => store.data.rewards.filter((r) => r.redeemedAt).reduce((s, r) => s + Math.ceil(r.price / POINT_VALUE), 0);
@@ -212,7 +235,8 @@
     if (prev) cancelAnimationFrame(prev);
 
     const from = parseFloat(el.textContent.replace(/,/g, '')) || 0;
-    if (reduceMotion || from === to) {
+    // 頁面在背景時 rAF 不會觸發，動畫會讓數字停在舊值，所以直接寫入
+    if (reduceMotion || document.hidden || from === to) {
       animFrames.delete(el);
       el.textContent = to.toFixed(decimals);
       return;
@@ -257,16 +281,47 @@
     }
   }
 
+  let taskSig = '';
+
+  function buildTaskList() {
+    $('#taskList').innerHTML = store.data.tasks.map((task) => {
+      const note = (task.note || '').replace('{goal}', store.data.goalHours);
+      return `
+        <li>
+          <label class="task">
+            <input type="checkbox" data-task="${esc(task.id)}">
+            <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12.5 9.5,18 20,6.5"/></svg></span>
+            <span class="task-text">
+              <span class="task-name">${esc(task.name)}</span>
+              ${note ? `<span class="task-note">${esc(note)}</span>` : ''}
+            </span>
+            <span class="task-pt">+${PT_PER_TASK}</span>
+          </label>
+        </li>`;
+    }).join('');
+  }
+
   function renderCheckin() {
     const t = today();
     const d = store.day(t);
-    TASKS.forEach((k) => { $(`input[data-task="${k}"]`).checked = !!d[k]; });
+
+    // 只有在項目清單真的變動時才重建 DOM，否則勾選動畫會被打斷
+    const sig = JSON.stringify(store.data.tasks) + '|' + store.data.goalHours;
+    if (sig !== taskSig) { taskSig = sig; buildTaskList(); }
+
+    store.data.tasks.forEach((task) => {
+      const el = $(`#taskList input[data-task="${task.id}"]`);
+      if (el) el.checked = !!d[task.id];
+    });
+
     $('#hoursInput').value = d.hours || 0;
-    $('#goalHint').textContent = store.data.goalHours;
+    $('#hoursRow').hidden = !autoTaskId('hours');
 
     const pts = dayPoints(d);
     countTo($('#todayPts'), pts);
     $('#perfectTag').hidden = !isPerfect(d);
+    $('#checkinHint').textContent =
+      `全部達成再加碼 ${PT_PER_TASK} 點，單日最高 ${maxDayPoints()} 點。`;
 
     const wd = ['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()];
     $('#todayChip').textContent = `${fmtDate(t)}・週${wd}`;
@@ -301,10 +356,13 @@
     for (let i = 13; i >= 0; i--) {
       const dateStr = addDays(today(), -i);
       const d = store.data.days[dateStr];
-      const n = d ? TASKS.filter((t) => d[t]).length : 0;
+      const n = d ? doneCount(d) : 0;
+      const total = d ? idsOf(d).length : 0;
       if (n > 0) done++;
+      // 項目數可變，改用完成比例對應四階色深
+      const lvl = n === 0 ? 0 : Math.max(1, Math.ceil((n / total) * 3));
       cells.push(
-        `<div class="heat-cell l${n}${i === 0 ? ' today' : ''}" title="${fmtDate(dateStr)}：完成 ${n} 項"></div>`
+        `<div class="heat-cell l${lvl}${i === 0 ? ' today' : ''}" title="${fmtDate(dateStr)}：完成 ${n}／${total || 0} 項"></div>`
       );
     }
     $('#heat').innerHTML = cells.join('');
@@ -507,6 +565,7 @@
   }
 
   function renderAll() {
+    store.day(today());   // 先讓今天的項目快照對齊目前設定，其餘渲染才算得對
     renderQuote();
     renderCountdown();
     renderCheckin();
@@ -529,21 +588,24 @@
   }
 
   /* 打卡 */
+  function celebrate() {
+    const card = $('.card-checkin');
+    card.classList.remove('celebrate');
+    void card.offsetWidth;
+    card.classList.add('celebrate');
+    toast(`全勤達成！今天 +${maxDayPoints()} 點，連續 ${streakCount()} 天 🔥`);
+  }
+
   function bindCheckin() {
-    TASKS.forEach((k) => {
-      $(`input[data-task="${k}"]`).addEventListener('change', (e) => {
-        const d = store.day(today());
-        const wasPerfect = isPerfect(d);
-        d[k] = e.target.checked;
-        save();
-        if (!wasPerfect && isPerfect(d)) {
-          const card = $('.card-checkin');
-          card.classList.remove('celebrate');
-          void card.offsetWidth;
-          card.classList.add('celebrate');
-          toast(`全勤達成！今天 +40 點，連續 ${streakCount()} 天 🔥`);
-        }
-      });
+    // 委派：項目清單是動態產生的
+    $('#taskList').addEventListener('change', (e) => {
+      const input = e.target.closest('input[data-task]');
+      if (!input) return;
+      const d = store.day(today());
+      const wasPerfect = isPerfect(d);
+      d[input.dataset.task] = input.checked;
+      save();
+      if (!wasPerfect && isPerfect(d)) celebrate();
     });
 
     const hours = $('#hoursInput');
@@ -553,9 +615,10 @@
       const d = store.day(today());
       d.hours = v;
       const wasPerfect = isPerfect(d);
-      d.study = v >= store.data.goalHours;   // 時數自動帶動「時數達標」
+      const id = autoTaskId('hours');           // 時數自動帶動對應項目
+      if (id) d[id] = v >= store.data.goalHours;
       save();
-      if (!wasPerfect && isPerfect(d)) toast(`全勤達成！今天 +40 點，連續 ${streakCount()} 天 🔥`);
+      if (!wasPerfect && isPerfect(d)) celebrate();
     };
     hours.addEventListener('change', applyHours);
     $$('.step-btn').forEach((b) => b.addEventListener('click', () => {
@@ -815,17 +878,18 @@
         mastered: false
       });
 
-      // 自動帶勾「訂正錯題達標」
+      // 自動帶勾對應的打卡項目（若使用者沒刪掉的話）
       const d = store.day(today());
       const wasPerfect = isPerfect(d);
-      d.fix = true;
+      const fixId = autoTaskId('mistake');
+      if (fixId) d[fixId] = true;
 
       $('#mistakeForm').reset();
       $$('#reasonChips .chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
       clearImage();
       save();
       toast(isPerfect(d) && !wasPerfect
-        ? `收錄完成，順手達成全勤 +40 點 🔥`
+        ? `收錄完成，順手達成全勤 +${maxDayPoints()} 點 🔥`
         : `已收錄，${REVIEW_STEPS[0]} 天後提醒你重寫。`);
     });
 
@@ -1034,6 +1098,60 @@
     });
   }
 
+  /* 打卡項目編輯 */
+  function renderTaskEditor() {
+    const tasks = store.data.tasks;
+    $('#taskEditor').innerHTML = tasks.map((t, i) => `
+      <li class="task-edit">
+        <div class="task-edit-fields">
+          <input type="text" class="te-name" data-i="${i}" value="${esc(t.name)}"
+                 maxlength="20" placeholder="項目名稱" aria-label="第 ${i + 1} 項名稱">
+          <input type="text" class="te-note" data-i="${i}" value="${esc(t.note || '')}"
+                 maxlength="30" placeholder="說明（選填）" aria-label="第 ${i + 1} 項說明">
+        </div>
+        <button class="mi-del" type="button" data-task-del="${i}"
+                aria-label="刪除「${esc(t.name)}」" ${tasks.length <= MIN_TASKS ? 'disabled' : ''}>✕</button>
+      </li>`).join('');
+    $('#taskAdd').disabled = tasks.length >= MAX_TASKS;
+  }
+
+  function bindTaskEditor() {
+    renderTaskEditor();
+
+    // 邊打字邊存，但不重繪編輯器本身，否則游標會跳掉
+    $('#taskEditor').addEventListener('input', (e) => {
+      const el = e.target;
+      const i = Number(el.dataset.i);
+      const task = store.data.tasks[i];
+      if (!task) return;
+      if (el.classList.contains('te-name')) task.name = el.value;
+      else if (el.classList.contains('te-note')) task.note = el.value;
+      store.save();
+      renderCheckin();
+    });
+
+    $('#taskEditor').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-task-del]');
+      if (!btn) return;
+      const i = Number(btn.dataset.taskDel);
+      const task = store.data.tasks[i];
+      if (!task || store.data.tasks.length <= MIN_TASKS) return;
+      if (!confirm(`刪除打卡項目「${task.name}」？\n過去的紀錄與點數不會改變。`)) return;
+      store.data.tasks.splice(i, 1);
+      save();
+      renderTaskEditor();
+      toast('已刪除項目');
+    });
+
+    $('#taskAdd').addEventListener('click', () => {
+      if (store.data.tasks.length >= MAX_TASKS) return;
+      store.data.tasks.push({ id: uid(), name: '新項目', note: '' });
+      save();
+      renderTaskEditor();
+      $('#taskEditor .task-edit:last-child .te-name')?.focus();
+    });
+  }
+
   /* 顯示大小：加到主畫面後 iOS 停用雙指縮放，改由 app 自己提供 */
   function applyZoom(z) {
     document.documentElement.style.zoom = z === 1 ? '' : String(z);
@@ -1125,6 +1243,7 @@
     bindCertificate();
     bindDialogs();
     bindBackup();
+    bindTaskEditor();
     bindZoom();
     bindTabs();
     bindCursor();

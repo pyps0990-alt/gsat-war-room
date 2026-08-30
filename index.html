@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=6">
+<link rel="stylesheet" href="./styles.css?v=7">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -102,7 +102,7 @@
         </li>
       </ul>
 
-      <div class="hours-row">
+      <div class="hours-row" id="hoursRow">
         <label for="hoursInput">今日讀書時數</label>
         <div class="hours-control">
           <button class="step-btn" type="button" data-step="-0.5" aria-label="減少 0.5 小時">−</button>
@@ -114,7 +114,7 @@
 
       <div class="checkin-footer">
         <p class="today-points" aria-live="polite">今日獲得 <b id="todayPts">0</b> 點<span class="perfect-tag" id="perfectTag" hidden>全勤 +10</span></p>
-        <p class="hint">三項全達成再加碼 10 點，單日最高 40 點。</p>
+        <p class="hint" id="checkinHint">全部達成再加碼 10 點，單日最高 40 點。</p>
       </div>
     </section>
 
@@ -242,6 +242,16 @@
     </section>
 
   </div>
+
+  <section class="card settings-card" data-group="settings" aria-labelledby="tkTitle">
+    <div class="card-head">
+      <h2 id="tkTitle">打卡項目</h2>
+      <span class="muted">每項 +10 點</span>
+    </div>
+    <ul class="task-editor" id="taskEditor"></ul>
+    <button class="btn btn-ghost btn-sm" type="button" id="taskAdd">＋ 新增項目</button>
+    <p class="hint">2～6 項。改動只影響今天以後，過去的紀錄與點數維持原樣。</p>
+  </section>
 
   <section class="card settings-card" data-group="settings" aria-labelledby="seTitle">
     <div class="card-head">
@@ -381,7 +391,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=6"></script>
-<script src="./google.js?v=6"></script>
+<script src="./app.js?v=7"></script>
+<script src="./google.js?v=7"></script>
 </body>
 </html>

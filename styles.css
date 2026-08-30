@@ -863,6 +863,22 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
   line-height: 2;
 }
 
+/* ---------- 打卡項目編輯 ---------- */
+.task-editor { display: grid; gap: 10px; margin-bottom: 14px; }
+.task-edit {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--bg);
+}
+.task-edit-fields { flex: 1; min-width: 0; display: grid; gap: 7px; }
+.task-edit-fields .te-name { font-size: 15px; }
+.task-edit-fields .te-note { font-size: 13.5px; min-height: 38px; padding: 8px 12px; }
+.task-edit .mi-del { flex-shrink: 0; align-self: center; }
+.task-edit .mi-del:disabled { opacity: .3; cursor: not-allowed; }
+#taskAdd:disabled { opacity: .42; cursor: not-allowed; }
+
 /* ---------- 顯示設定 ---------- */
 .settings-card { margin-top: 26px; }
 .setting-row {
