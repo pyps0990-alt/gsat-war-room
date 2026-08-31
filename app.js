@@ -23,6 +23,10 @@
   const autoTaskId = (kind) => (store.data.tasks.find((t) => t.auto === kind) || {}).id;
   const REVIEW_STEPS = [1, 3, 7, 30]; // 天
   const SUBJECTS = ['國文', '英文', '數A', '物理', '化學', '生物', '地科'];
+  const STUDY_SUBJECTS = [...SUBJECTS, '其他'];
+
+  // 番茄鐘：專注 25 分、短休 5 分、每 4 顆長休 15 分
+  const POMO = { focus: 25, short: 5, long: 15, longEvery: 4 };
   const REASONS = ['觀念混淆', '計算失誤', '審題粗心', '公式不熟', '題型新穎'];
   const MILESTONES = [7, 14, 30, 50, 100];
 
@@ -105,6 +109,9 @@
     email: '',
     quoteOffset: 0,
     zoom: 1,
+    subject: '國文',          // 目前正在讀的科目
+    pomo: null,               // { mode, endsAt, remaining, cycles, day }
+    exams: [],                // 模擬考成績
     updatedAt: new Date().toISOString()
   });
 
@@ -281,6 +288,37 @@
     }
   }
 
+  /* 科目時數：bySubject 是明細，hours 是合計（舊資料只有 hours） */
+  const subjectBreakdown = (d) => {
+    const bs = d.bySubject || {};
+    const parts = Object.entries(bs).filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k} ${round1(v)}`);
+    return parts.length ? `・${parts.join('、')}` : '';
+  };
+
+  const syncHours = (d) => {
+    d.hours = round1(Object.values(d.bySubject || {}).reduce((s, v) => s + v, 0));
+  };
+
+  /* 加時數到指定科目（delta 可為負），回傳是否剛好達成全勤 */
+  function addHours(delta, subject) {
+    const d = store.day(today());
+    const subj = subject || store.data.subject;
+    d.bySubject = d.bySubject || {};
+    // 舊紀錄只有 hours 沒有明細，先把它歸到「其他」才不會憑空消失
+    if (d.hours > 0 && Object.keys(d.bySubject).length === 0) d.bySubject['其他'] = d.hours;
+    d.bySubject[subj] = Math.max(0, round1((d.bySubject[subj] || 0) + delta));
+    if (d.bySubject[subj] === 0) delete d.bySubject[subj];
+    syncHours(d);
+
+    const wasPerfect = isPerfect(d);
+    const id = autoTaskId('hours');
+    if (id) d[id] = d.hours >= store.data.goalHours;
+    save();
+    if (!wasPerfect && isPerfect(d)) celebrate();
+  }
+
   let taskSig = '';
 
   function buildTaskList() {
@@ -314,8 +352,13 @@
       if (el) el.checked = !!d[task.id];
     });
 
-    $('#hoursInput').value = d.hours || 0;
+    const subj = store.data.subject;
+    $('#hoursInput').value = round1((d.bySubject || {})[subj] || 0);
+    $('#hoursTotal').textContent = (d.hours || 0) > 0
+      ? `今日合計 ${round1(d.hours)} 小時` + subjectBreakdown(d)
+      : '今日還沒有讀書紀錄。';
     $('#hoursRow').hidden = !autoTaskId('hours');
+    $('#hoursTotal').hidden = !autoTaskId('hours');
 
     const pts = dayPoints(d);
     countTo($('#todayPts'), pts);
@@ -465,6 +508,91 @@
     }
   }
 
+  /* ---------- 科目分配 ---------- */
+  function renderSubjects() {
+    const totals = {};
+    for (let i = 0; i < chartRange; i++) {
+      const d = store.data.days[addDays(today(), -i)];
+      if (!d) continue;
+      const bs = d.bySubject || (d.hours > 0 ? { 其他: d.hours } : {});
+      for (const [k, v] of Object.entries(bs)) totals[k] = round1((totals[k] || 0) + v);
+    }
+    const rows = Object.entries(totals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const sum = rows.reduce((s, [, v]) => s + v, 0);
+
+    $('#subjectRange').textContent = `近 ${chartRange} 天`;
+    $('#subjectEmpty').hidden = rows.length > 0;
+    $('#subjectBars').innerHTML = rows.map(([name, v]) => `
+      <li class="subject-row">
+        <span class="subject-name">${esc(name)}</span>
+        <span class="subject-bar"><i style="width:${(v / rows[0][1]) * 100}%"></i></span>
+        <span class="subject-val">${round1(v)} 小時<small>${Math.round((v / sum) * 100)}%</small></span>
+      </li>`).join('');
+  }
+
+  /* ---------- 模擬考成績 ---------- */
+  const EXAM_SUBJECTS = ['國文', '英文', '數A', '社會', '自然'];
+  const examTotal = (e) => EXAM_SUBJECTS.reduce((s, k) => s + (Number(e.scores[k]) || 0), 0);
+
+  function renderExams() {
+    const list = store.data.exams.slice().sort((a, b) => a.date.localeCompare(b.date));
+    $('#examEmpty').hidden = list.length > 0;
+
+    $('#examList').innerHTML = list.slice().reverse().map((e) => `
+      <li class="exam-item">
+        <div class="exam-body">
+          <p class="exam-name">${esc(e.name)}</p>
+          <p class="exam-meta">${fmtDate(e.date)}・總級分 <b>${examTotal(e)}</b></p>
+          <div class="exam-tags">${EXAM_SUBJECTS.map((k) =>
+            e.scores[k] != null && e.scores[k] !== '' ? `<span class="tag">${k} ${e.scores[k]}</span>` : '').join('')}</div>
+        </div>
+        <button class="mi-del" type="button" data-exam-del="${e.id}" aria-label="刪除「${esc(e.name)}」">✕</button>
+      </li>`).join('');
+
+    drawExamChart(list);
+  }
+
+  function drawExamChart(list) {
+    const svg = $('#examChart');
+    const wrapW = Math.round(svg.parentElement?.clientWidth || 0);
+    if (!wrapW || list.length === 0) { svg.innerHTML = ''; $('#examDesc').textContent = ''; return; }
+
+    const W = Math.max(280, wrapW), H = 160;
+    const padL = 30, padR = 10, padT = 12, padB = 24;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    const max = 75;   // 五科滿級分
+    const css = getComputedStyle(document.documentElement);
+    const cPrimary = css.getPropertyValue('--primary').trim();
+    const cBorder = css.getPropertyValue('--border').trim();
+    const cMuted = css.getPropertyValue('--text-2').trim();
+
+    let out = '';
+    [0, 0.5, 1].forEach((f) => {
+      const y = padT + ih - f * ih;
+      out += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="${cBorder}" stroke-width="1"/>`;
+      out += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="10.5" fill="${cMuted}">${Math.round(max * f)}</text>`;
+    });
+
+    const x = (i) => padL + (list.length === 1 ? iw / 2 : (i / (list.length - 1)) * iw);
+    const y = (v) => padT + ih - (v / max) * ih;
+    const pts = list.map((e, i) => `${round1(x(i))},${round1(y(examTotal(e)))}`).join(' ');
+
+    if (list.length > 1) out += `<polyline points="${pts}" fill="none" stroke="${cPrimary}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    list.forEach((e, i) => {
+      out += `<circle cx="${round1(x(i))}" cy="${round1(y(examTotal(e)))}" r="4.5" fill="${cPrimary}"><title>${esc(e.name)}：${examTotal(e)} 級分</title></circle>`;
+      if (i === 0 || i === list.length - 1 || list.length <= 4) {
+        const [, m, dd] = e.date.split('-');
+        out += `<text x="${round1(x(i))}" y="${H - 7}" text-anchor="middle" font-size="10" fill="${cMuted}">${Number(m)}/${Number(dd)}</text>`;
+      }
+    });
+    svg.innerHTML = out;
+
+    const totals = list.map(examTotal);
+    $('#examDesc').textContent = `模擬考總級分趨勢：${list.map((e, i) => `${e.name} ${totals[i]} 級分`).join('，')}。`;
+  }
+
   /* ---------- 獎勵 ---------- */
   function renderRewards() {
     const list = $('#rewardList');
@@ -573,6 +701,8 @@
     renderPoints();
     renderHeat();
     renderChart();
+    renderSubjects();
+    renderExams();
     renderRewards();
     renderMistakes();
     renderTabDot();
@@ -608,22 +738,27 @@
       if (!wasPerfect && isPerfect(d)) celebrate();
     });
 
+    // 科目選單
+    const sel = $('#subjectSelect');
+    sel.innerHTML = STUDY_SUBJECTS.map((s) => `<option>${s}</option>`).join('');
+    sel.value = store.data.subject;
+    sel.addEventListener('change', () => {
+      store.data.subject = sel.value;
+      store.save();
+      renderCheckin();
+    });
+
+    // 直接輸入 = 設定「這一科」今天的時數
     const hours = $('#hoursInput');
-    const applyHours = () => {
+    hours.addEventListener('change', () => {
       const v = Math.max(0, Math.min(24, parseFloat(hours.value) || 0));
-      hours.value = v;
       const d = store.day(today());
-      d.hours = v;
-      const wasPerfect = isPerfect(d);
-      const id = autoTaskId('hours');           // 時數自動帶動對應項目
-      if (id) d[id] = v >= store.data.goalHours;
-      save();
-      if (!wasPerfect && isPerfect(d)) celebrate();
-    };
-    hours.addEventListener('change', applyHours);
+      const cur = (d.bySubject || {})[store.data.subject] || 0;
+      addHours(round1(v - cur));
+    });
+
     $$('.step-btn').forEach((b) => b.addEventListener('click', () => {
-      hours.value = Math.max(0, (parseFloat(hours.value) || 0) + parseFloat(b.dataset.step));
-      applyHours();
+      addHours(parseFloat(b.dataset.step));
     }));
   }
 
@@ -633,6 +768,7 @@
       chartRange = Number(b.dataset.range);
       $$('.seg-btn').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       renderChart();
+      renderSubjects();
     }));
 
     // 轉向或改變視窗大小時重畫，讓 viewBox 跟上新的容器寬度。
@@ -761,6 +897,43 @@
       store.data.quoteOffset = ((store.data.quoteOffset || 0) + 1) % QUOTES.length;
       store.save();
       renderQuote();
+    });
+  }
+
+  /* 模擬考 */
+  function bindExams() {
+    $('#examScores').innerHTML = EXAM_SUBJECTS.map((s) => `
+      <label class="exam-score">
+        <span>${s}</span>
+        <input type="number" data-subject="${s}" min="0" max="15" step="1" inputmode="numeric" placeholder="－">
+      </label>`).join('');
+
+    $('#examForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#examName').value.trim();
+      if (!name) return;
+      const scores = {};
+      let any = false;
+      $$('#examScores input').forEach((i) => {
+        const v = i.value.trim();
+        if (v !== '') { scores[i.dataset.subject] = Math.max(0, Math.min(15, parseInt(v, 10) || 0)); any = true; }
+      });
+      if (!any) { toast('至少填一科的級分'); return; }
+
+      store.data.exams.push({ id: uid(), name, date: today(), scores });
+      $('#examForm').reset();
+      save();
+      toast(`已記錄「${name}」，總級分 ${Object.values(scores).reduce((s, v) => s + v, 0)}`);
+    });
+
+    $('#examList').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-exam-del]');
+      if (!btn) return;
+      const ex = store.data.exams.find((x) => x.id === btn.dataset.examDel);
+      if (ex && confirm(`刪除「${ex.name}」的成績紀錄？`)) {
+        store.data.exams = store.data.exams.filter((x) => x.id !== ex.id);
+        save();
+      }
     });
   }
 
@@ -933,11 +1106,58 @@
       }
     });
 
+    $('#printBtn').addEventListener('click', buildPrintSheet);
+
     $('#dueJump').addEventListener('click', () => {
       dueOnly = !dueOnly;
       $('#dueJump').textContent = dueOnly ? '顯示全部' : '只看待重寫';
       renderMistakes();
     });
+  }
+
+  /* 匯出複習卷：組出列印用版面後叫瀏覽器列印（可存成 PDF） */
+  async function buildPrintSheet() {
+    let list = store.data.mistakes.filter((m) => !m.mastered);
+    if (subjectFilter !== '全部') list = list.filter((m) => m.subject === subjectFilter);
+    if (dueOnly) list = list.filter(isDue);
+
+    if (!list.length) { toast('目前的篩選條件下沒有題目可以匯出。'); return; }
+    toast('正在準備複習卷…');
+
+    // 圖片要轉成 data URL，列印時 blob: 網址不一定讀得到
+    const imgs = {};
+    for (const m of list) {
+      if (!m.imageId) continue;
+      try {
+        const blob = await idb.get(m.imageId);
+        if (blob) imgs[m.imageId] = await blobToDataURL(blob);
+      } catch { /* 讀不到就只印文字 */ }
+    }
+
+    const scope = subjectFilter === '全部' ? '全科' : subjectFilter;
+    $('#printSheet').innerHTML = `
+      <div class="ps-head">
+        <h1>錯題複習卷・${esc(scope)}</h1>
+        <p>${fmtDate(today())}　共 ${list.length} 題　　姓名 ____________　得分 ________</p>
+      </div>
+      <ol class="ps-list">
+        ${list.map((m) => `
+          <li class="ps-item">
+            <p class="ps-q">${esc(m.summary)}</p>
+            <p class="ps-meta">${esc(m.subject)}${m.unit ? '・' + esc(m.unit) : ''}${
+              (m.reasons || []).length ? '　易錯：' + m.reasons.map(esc).join('、') : ''}</p>
+            ${m.imageId && imgs[m.imageId] ? `<img class="ps-img" src="${imgs[m.imageId]}" alt="">` : ''}
+            <div class="ps-answer"><span>作答</span></div>
+          </li>`).join('')}
+      </ol>
+      <p class="ps-foot">學測戰情室・${esc(scope)}錯題複習卷</p>`;
+
+    document.body.classList.add('printing');
+    // 等圖片解碼完再列印，否則可能印出空白圖
+    await Promise.all([...$('#printSheet').querySelectorAll('img')]
+      .map((img) => img.decode().catch(() => {})));
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing'), 500);
   }
 
   async function setImage(file) {
@@ -1098,6 +1318,111 @@
     });
   }
 
+  /* ---------- 番茄鐘 ----------
+     狀態用「結束時間戳」而非倒數計數器，重新整理或關掉分頁再回來都還準。 */
+  let pomoTimer = null;
+
+  const pomoState = () => {
+    let p = store.data.pomo;
+    if (!p || p.day !== today()) {
+      p = store.data.pomo = { mode: 'focus', endsAt: null, remaining: POMO.focus * 60000, cycles: 0, day: today() };
+    }
+    return p;
+  };
+
+  const pomoLeft = (p) => (p.endsAt ? Math.max(0, p.endsAt - Date.now()) : p.remaining);
+  const pomoTotal = (p) => (p.mode === 'focus' ? POMO.focus : p.mode === 'long' ? POMO.long : POMO.short) * 60000;
+
+  function beep() {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.frequency.value = 660;
+      g.gain.setValueAtTime(0.0001, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.22, ac.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.9);
+      o.start(); o.stop(ac.currentTime + 0.95);
+      setTimeout(() => ac.close(), 1200);
+    } catch { /* 沒有音訊權限就算了 */ }
+  }
+
+  function renderPomo() {
+    const p = pomoState();
+    const left = pomoLeft(p);
+    const mm = String(Math.floor(left / 60000)).padStart(2, '0');
+    const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+    $('#pomoTime').textContent = `${mm}:${ss}`;
+    $('#pomoMode').textContent = p.mode === 'focus' ? '專注' : p.mode === 'long' ? '長休息' : '短休息';
+    $('#pomoMode').className = 'pomo-mode' + (p.mode === 'focus' ? '' : ' is-break');
+    $('#pomoBar').style.width = ((1 - left / pomoTotal(p)) * 100) + '%';
+    $('#pomoStart').textContent = p.endsAt ? '暫停' : (left < pomoTotal(p) ? '繼續' : '開始');
+    $('#pomoCycles').textContent = `今天 ${p.cycles} 顆`;
+    $('#pomoHint').textContent = p.mode === 'focus'
+      ? `專注 ${POMO.focus} 分鐘，結束後自動加進「${store.data.subject}」的時數。`
+      : '休息一下，讓腦袋沉澱。';
+  }
+
+  function pomoTick() {
+    const p = pomoState();
+    if (!p.endsAt) return;
+    if (pomoLeft(p) > 0) { renderPomo(); return; }
+    pomoFinish();
+  }
+
+  function pomoFinish() {
+    const p = pomoState();
+    p.endsAt = null;
+    if (p.mode === 'focus') {
+      p.cycles += 1;
+      addHours(round1(POMO.focus / 60));       // 25 分 → 0.4 小時（四捨五入到 0.1）
+      p.mode = (p.cycles % POMO.longEvery === 0) ? 'long' : 'short';
+      toast(`第 ${p.cycles} 顆番茄完成，已加 ${round1(POMO.focus / 60)} 小時到「${store.data.subject}」`);
+    } else {
+      p.mode = 'focus';
+      toast('休息結束，回來繼續。');
+    }
+    p.remaining = pomoTotal(p);
+    beep();
+    save();
+    renderPomo();
+  }
+
+  function bindPomo() {
+    $('#pomoStart').addEventListener('click', () => {
+      const p = pomoState();
+      if (p.endsAt) {                       // 暫停
+        p.remaining = pomoLeft(p);
+        p.endsAt = null;
+      } else {                              // 開始／繼續
+        p.endsAt = Date.now() + (p.remaining || pomoTotal(p));
+      }
+      store.save();
+      renderPomo();
+    });
+
+    $('#pomoReset').addEventListener('click', () => {
+      const p = pomoState();
+      p.endsAt = null;
+      p.remaining = pomoTotal(p);
+      store.save();
+      renderPomo();
+    });
+
+    $('#pomoSkip').addEventListener('click', () => {
+      const p = pomoState();
+      if (p.mode === 'focus' && !confirm('跳過這顆番茄？不會計入時數。')) return;
+      p.endsAt = null;
+      p.mode = p.mode === 'focus' ? 'short' : 'focus';
+      p.remaining = pomoTotal(p);
+      store.save();
+      renderPomo();
+    });
+
+    pomoTimer = setInterval(pomoTick, 500);
+    renderPomo();
+  }
+
   /* 打卡項目編輯 */
   function renderTaskEditor() {
     const tasks = store.data.tasks;
@@ -1180,6 +1505,7 @@
     // 仍隱藏時 renderChart 會自行略過。
     void document.body.offsetHeight;
     renderChart();
+    renderExams();
   }
 
   function bindTabs() {
@@ -1240,11 +1566,13 @@
     bindCheckin();
     bindChart();
     bindRewards();
+    bindExams();
     bindMistakes();
     bindCertificate();
     bindDialogs();
     bindBackup();
     bindTaskEditor();
+    bindPomo();
     bindZoom();
     bindTabs();
     bindCursor();

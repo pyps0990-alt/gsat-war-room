@@ -398,6 +398,37 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .hint { font-size: 13px; color: var(--text-2); margin-top: 2px; }
 
+/* ---------- 科目時數 ---------- */
+.hours-subject { display: flex; align-items: center; gap: 9px; }
+.hours-subject label { font-size: 14.5px; color: var(--text-2); flex-shrink: 0; }
+.hours-subject select { width: auto; min-width: 96px; padding: 8px 12px; min-height: 38px; }
+.hours-total { font-size: 13px; color: var(--text-2); margin-top: 10px; line-height: 1.6; }
+
+/* ---------- 番茄鐘 ---------- */
+.pomo-mode {
+  font-size: 13px; letter-spacing: .16em; color: var(--primary);
+  font-weight: 500;
+}
+.pomo-mode.is-break { color: var(--accent-ink); }
+.pomo-time {
+  font-family: var(--serif);
+  font-size: clamp(50px, 12vw, 72px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 14px;
+}
+.pomo-ring { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.pomo-ring-fill {
+  height: 100%; width: 0; border-radius: 99px;
+  background: var(--primary);
+  transition: width .9s linear;
+}
+.pomo-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 10px; }
+.card-pomo .hint { margin-top: auto; }
+@media (max-width: 640px) { .pomo-actions .btn { flex: 1; } }
+
 /* ---------- 連續天數 / 點數 ---------- */
 .streak-num, .points-num {
   font-family: var(--serif);
@@ -475,6 +506,38 @@ input, select, textarea { font: inherit; color: inherit; }
 .legend .l2 { background: color-mix(in srgb, var(--primary) 48%, var(--surface-2)); border-color: transparent; }
 .legend .l3 { background: var(--primary); border-color: transparent; }
 .legend .muted { font-size: 12px; }
+
+/* ---------- 科目分配 ---------- */
+.subject-bars { display: grid; gap: 11px; }
+.subject-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 11px; }
+.subject-name { font-size: 13.5px; color: var(--text-2); }
+.subject-bar { height: 9px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.subject-bar i { display: block; height: 100%; border-radius: 99px; background: var(--primary); transition: width .7s var(--ease); }
+.subject-val { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subject-val small { color: var(--text-2); margin-left: 6px; font-size: 11.5px; }
+
+/* ---------- 模擬考成績 ---------- */
+.exam-form { display: grid; gap: 10px; margin-bottom: 16px; }
+.exam-scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.exam-score { display: flex; flex-direction: column; gap: 4px; }
+.exam-score span { font-size: 12px; color: var(--text-2); text-align: center; }
+.exam-score input { padding: 8px 4px; min-height: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+.exam-form .btn { justify-self: start; }
+@media (max-width: 640px) { .exam-form .btn { justify-self: stretch; } }
+
+.exam-list { display: grid; gap: 9px; margin-top: 14px; }
+.exam-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--bg);
+}
+.exam-body { flex: 1; min-width: 0; }
+.exam-name { font-size: 15px; word-break: break-word; }
+.exam-meta { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+.exam-meta b { color: var(--primary); font-family: var(--serif); font-size: 16px; }
+.exam-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
 
 /* ---------- 統計圖表 ---------- */
 .chart-toggle { display: flex; gap: 6px; }
@@ -1041,6 +1104,54 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
   to   { opacity: 1; transform: translateY(0); }
 }
 .rise-in { animation: riseIn .45s var(--ease) both; }
+
+/* ---------- 複習卷列印 ---------- */
+#printSheet { display: none; }
+
+@media print {
+  /* 只印複習卷 */
+  body > *:not(#printSheet) { display: none !important; }
+  .grain, .cursor-dot, .tabbar, .toast { display: none !important; }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    zoom: 1 !important;
+  }
+
+  #printSheet {
+    display: block !important;
+    padding: 0;
+    font-family: "Noto Serif TC", Georgia, serif;
+  }
+
+  .ps-head { border-bottom: 2px solid #000; padding-bottom: 8pt; margin-bottom: 14pt; }
+  .ps-head h1 { font-size: 17pt; margin: 0 0 5pt; }
+  .ps-head p { font-size: 10pt; color: #444; }
+
+  .ps-list { list-style: decimal; padding-left: 20pt; margin: 0; }
+  .ps-item { margin-bottom: 16pt; break-inside: avoid; page-break-inside: avoid; }
+  .ps-q { font-size: 12pt; line-height: 1.6; margin-bottom: 3pt; }
+  .ps-meta { font-size: 9.5pt; color: #555; margin-bottom: 5pt; }
+  .ps-img { max-width: 100%; max-height: 62mm; display: block; margin: 5pt 0; }
+
+  .ps-answer {
+    border: 1px dashed #999;
+    border-radius: 3pt;
+    height: 22mm;
+    margin-top: 5pt;
+    position: relative;
+  }
+  .ps-answer span {
+    position: absolute; top: 2pt; left: 4pt;
+    font-size: 8.5pt; color: #999;
+  }
+
+  .ps-foot { margin-top: 14pt; font-size: 9pt; color: #777; text-align: center; }
+
+  @page { margin: 14mm; }
+}
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
