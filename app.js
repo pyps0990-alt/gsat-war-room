@@ -671,6 +671,14 @@
       return rank(a) - rank(b) || (b.createdAt || '').localeCompare(a.createdAt || '');
     });
 
+    if (quizMode) {
+      const answerable = list.filter((m) => m.answer || m.myError || m.notes);
+      const done = answerable.filter((m) => revealed.has(m.id)).length;
+      $('#quizProgress').textContent = answerable.length
+        ? `已翻開 ${done} / ${answerable.length} 題・答案與錯誤原因都先遮起來了`
+        : `這 ${list.length} 題還沒填訂正內容，先用「補充訂正」補上才有得測`;
+    }
+
     $('#mistakeEmpty').hidden = all.length > 0;
     $('#mistakeList').innerHTML = list.map((m) => {
       const due = isDue(m);
@@ -1117,14 +1125,19 @@
       searchTimer = setTimeout(() => { searchTerm = e.target.value; renderMistakes(); }, 180);
     });
 
-    $('#quizToggle').addEventListener('click', () => {
-      quizMode = !quizMode;
+    const setQuizMode = (on) => {
+      quizMode = on;
       revealed.clear();
-      $('#quizToggle').setAttribute('aria-pressed', String(quizMode));
-      $('.card-mistakes').classList.toggle('is-quiz', quizMode);
+      $('#quizToggle').setAttribute('aria-pressed', String(on));
+      $('#quizToggle').textContent = on ? '自測中' : '自測模式';
+      $('.card-mistakes').classList.toggle('is-quiz', on);
+      $('#quizBanner').hidden = !on;
       renderMistakes();
-      toast(quizMode ? '自測模式：先自己想過再看答案。' : '已離開自測模式。');
-    });
+      toast(on ? '自測模式：先自己想過再看答案。' : '已離開自測模式。');
+    };
+
+    $('#quizToggle').addEventListener('click', () => setQuizMode(!quizMode));
+    $('#quizExit').addEventListener('click', () => setQuizMode(false));
 
     $('#reasonChips').addEventListener('click', (e) => {
       const b = e.target.closest('[data-reason]');
