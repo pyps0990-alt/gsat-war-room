@@ -621,12 +621,40 @@
 
   /* ---------- 錯題本 ---------- */
   let subjectFilter = '全部';
+  let reasonFilter = new Set();
+  let statusFilter = '全部';          // 全部 / 待重寫 / 未掌握 / 已掌握
+  let searchTerm = '';
   let dueOnly = false;
+  let quizMode = false;
+  const revealed = new Set();         // 自測模式下已翻開答案的題目
   const thumbCache = new Map();
+  const STATUSES = ['全部', '待重寫', '未掌握', '已掌握'];
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const isDue = (m) => !m.mastered && m.nextReviewAt && m.nextReviewAt <= today();
+
+  /* 搜尋 + 多重篩選 */
+  function filteredMistakes() {
+    const q = searchTerm.trim().toLowerCase();
+    return store.data.mistakes.filter((m) => {
+      if (subjectFilter !== '全部' && m.subject !== subjectFilter) return false;
+      if (reasonFilter.size && !(m.reasons || []).some((r) => reasonFilter.has(r))) return false;
+      if (statusFilter === '待重寫' && !isDue(m)) return false;
+      if (statusFilter === '未掌握' && m.mastered) return false;
+      if (statusFilter === '已掌握' && !m.mastered) return false;
+      if (dueOnly && !isDue(m)) return false;
+      if (q) {
+        const hay = [m.summary, m.unit, m.answer, m.myError, m.notes, m.subject,
+          ...(m.reasons || [])].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  const activeFilterCount = () =>
+    (subjectFilter !== '全部' ? 1 : 0) + reasonFilter.size + (statusFilter !== '全部' ? 1 : 0);
 
   function renderMistakes() {
     const all = store.data.mistakes;
@@ -634,9 +662,7 @@
     $('#dueBanner').hidden = dueList.length === 0;
     $('#dueCount').textContent = dueList.length;
 
-    let list = all.slice();
-    if (subjectFilter !== '全部') list = list.filter((m) => m.subject === subjectFilter);
-    if (dueOnly) list = list.filter(isDue);
+    let list = filteredMistakes();
 
     // 待重寫的排最前，已掌握的排最後
     list.sort((a, b) => {
@@ -653,6 +679,20 @@
       else if (due) dueText = `該重寫了（第 ${stage + 1} 輪）`;
       else dueText = `下次重寫：${fmtDate(m.nextReviewAt)}（第 ${stage + 1} 輪）`;
 
+      const hasSolution = !!(m.answer || m.myError || m.notes);
+      const open = !quizMode || revealed.has(m.id);
+
+      // 自測模式下先藏起「錯誤原因」，那本身就是提示
+      const showReasons = !quizMode || open;
+
+      const solution = !hasSolution ? '' : open ? `
+        <div class="mi-solution">
+          ${m.answer ? `<p><span class="sol-label">正確答案</span>${esc(m.answer)}</p>` : ''}
+          ${m.myError ? `<p><span class="sol-label">我錯在哪</span>${esc(m.myError)}</p>` : ''}
+          ${m.notes ? `<p class="sol-notes"><span class="sol-label">訂正筆記</span>${esc(m.notes)}</p>` : ''}
+        </div>` : `
+        <button class="btn btn-ghost btn-sm mi-reveal" data-reveal="${m.id}">想好了，看答案</button>`;
+
       return `
         <li class="mistake-item ${due ? 'is-due' : ''} ${m.mastered ? 'is-mastered' : ''}" data-id="${m.id}">
           ${m.imageId ? `<img class="mi-thumb" data-img="${m.imageId}" alt="題目圖片縮圖，點擊放大">` : ''}
@@ -661,13 +701,15 @@
             <div class="mi-meta">
               <span class="tag tag-subject">${esc(m.subject)}</span>
               ${m.unit ? `<span class="tag">${esc(m.unit)}</span>` : ''}
-              ${(m.reasons || []).map((r) => `<span class="tag">${esc(r)}</span>`).join('')}
+              ${showReasons ? (m.reasons || []).map((r) => `<span class="tag">${esc(r)}</span>`).join('') : ''}
             </div>
+            ${solution}
             <p class="mi-due ${due ? 'due-now' : ''}">${dueText}</p>
             ${m.mastered ? '' : `
             <div class="mi-actions">
               <button class="btn btn-primary btn-sm" data-review-ok="${m.id}">重寫答對</button>
               <button class="btn btn-ghost btn-sm" data-review-no="${m.id}">還是錯</button>
+              <button class="btn btn-ghost btn-sm" data-mk-edit="${m.id}">補充訂正</button>
             </div>`}
           </div>
           <button class="mi-del" data-mk-del="${m.id}" aria-label="刪除錯題">✕</button>
@@ -684,6 +726,35 @@
         else img.remove();
       } catch { img.remove(); }
     });
+  }
+
+  /* ---------- 弱點分析 ---------- */
+  function renderWeak() {
+    const ms = store.data.mistakes;
+    $('#weakEmpty').hidden = ms.length > 0;
+    $('#weakCount').textContent = ms.length ? `共 ${ms.length} 題` : '';
+
+    const tally = (getKeys) => {
+      const t = {};
+      ms.forEach((m) => getKeys(m).forEach((k) => { if (k) t[k] = (t[k] || 0) + 1; }));
+      return Object.entries(t).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    };
+
+    const bars = (rows, unit) => {
+      if (!rows.length) return '';
+      const top = rows[0][1];
+      return rows.map(([name, n]) => `
+        <li class="subject-row">
+          <span class="subject-name">${esc(name)}</span>
+          <span class="subject-bar"><i style="width:${(n / top) * 100}%"></i></span>
+          <span class="subject-val">${n} ${unit}</span>
+        </li>`).join('');
+    };
+
+    // 單元沒填的題目，退而用科目統計，才不會全部落在「未填單元」
+    $('#weakUnits').innerHTML = bars(tally((m) => [m.unit || m.subject]), '題');
+    $('#weakReasons').innerHTML = bars(tally((m) => m.reasons || []), '次');
+    $$('.weak-block').forEach((b) => { b.hidden = ms.length === 0; });
   }
 
   function renderQuote() {
@@ -703,6 +774,7 @@
     renderChart();
     renderSubjects();
     renderExams();
+    renderWeak();
     renderRewards();
     renderMistakes();
     renderTabDot();
@@ -984,12 +1056,72 @@
     $('#reasonChips').innerHTML = REASONS
       .map((r) => `<button class="chip" type="button" data-reason="${r}" aria-pressed="false">${r}</button>`).join('');
 
+    $('#reasonFilter').innerHTML = REASONS
+      .map((r) => `<button class="chip" type="button" data-rfilter="${r}" aria-pressed="false">${r}</button>`).join('');
+    $('#statusFilter').innerHTML = STATUSES
+      .map((s) => `<button class="chip" type="button" data-status="${s}" aria-pressed="${s === '全部'}">${s}</button>`).join('');
+
+    const refreshFilterUI = () => {
+      const n = activeFilterCount();
+      $('#filterCount').hidden = n === 0;
+      $('#filterCount').textContent = n;
+      renderMistakes();
+    };
+
     $('#subjectFilter').addEventListener('click', (e) => {
       const b = e.target.closest('[data-subject]');
       if (!b) return;
       subjectFilter = b.dataset.subject;
       $$('#subjectFilter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+      refreshFilterUI();
+    });
+
+    $('#reasonFilter').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-rfilter]');
+      if (!b) return;
+      const r = b.dataset.rfilter;
+      if (reasonFilter.has(r)) reasonFilter.delete(r); else reasonFilter.add(r);
+      b.setAttribute('aria-pressed', String(reasonFilter.has(r)));
+      refreshFilterUI();
+    });
+
+    $('#statusFilter').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-status]');
+      if (!b) return;
+      statusFilter = b.dataset.status;
+      $$('#statusFilter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+      refreshFilterUI();
+    });
+
+    $('#filterToggle').addEventListener('click', () => {
+      const panel = $('#filterPanel');
+      panel.hidden = !panel.hidden;
+      $('#filterToggle').setAttribute('aria-expanded', String(!panel.hidden));
+    });
+
+    $('#filterClear').addEventListener('click', () => {
+      subjectFilter = '全部';
+      reasonFilter.clear();
+      statusFilter = '全部';
+      $$('#subjectFilter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.subject === '全部')));
+      $$('#reasonFilter .chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      $$('#statusFilter .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.status === '全部')));
+      refreshFilterUI();
+    });
+
+    let searchTimer;
+    $('#mkSearch').addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { searchTerm = e.target.value; renderMistakes(); }, 180);
+    });
+
+    $('#quizToggle').addEventListener('click', () => {
+      quizMode = !quizMode;
+      revealed.clear();
+      $('#quizToggle').setAttribute('aria-pressed', String(quizMode));
+      $('.card-mistakes').classList.toggle('is-quiz', quizMode);
       renderMistakes();
+      toast(quizMode ? '自測模式：先自己想過再看答案。' : '已離開自測模式。');
     });
 
     $('#reasonChips').addEventListener('click', (e) => {
@@ -1044,6 +1176,9 @@
         subject: $('#mkSubject').value,
         unit: $('#mkUnit').value.trim(),
         reasons: $$('#reasonChips .chip[aria-pressed="true"]').map((c) => c.dataset.reason),
+        answer: $('#mkAnswer').value.trim(),
+        myError: $('#mkMyError').value.trim(),
+        notes: $('#mkNotes').value.trim(),
         createdAt: today(),
         imageId,
         stage: 0,
@@ -1059,6 +1194,7 @@
 
       $('#mistakeForm').reset();
       $$('#reasonChips .chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      $('.mk-more').open = false;
       clearImage();
       save();
       toast(isPerfect(d) && !wasPerfect
@@ -1072,6 +1208,11 @@
       const no = e.target.closest('[data-review-no]');
       const del = e.target.closest('[data-mk-del]');
       const thumb = e.target.closest('.mi-thumb');
+      const reveal = e.target.closest('[data-reveal]');
+      const edit = e.target.closest('[data-mk-edit]');
+
+      if (reveal) { revealed.add(reveal.dataset.reveal); renderMistakes(); return; }
+      if (edit) { openEditDialog(edit.dataset.mkEdit); return; }
 
       if (ok || no) {
         const id = (ok || no).dataset.reviewOk || (ok || no).dataset.reviewNo;
@@ -1115,6 +1256,35 @@
     });
   }
 
+  /* 補充訂正內容 */
+  let editingId = null;
+
+  function openEditDialog(id) {
+    const m = store.data.mistakes.find((x) => x.id === id);
+    if (!m) return;
+    editingId = id;
+    $('#editTitle').textContent = m.summary;
+    $('#edAnswer').value = m.answer || '';
+    $('#edMyError').value = m.myError || '';
+    $('#edNotes').value = m.notes || '';
+    $('#editDialog').showModal();
+  }
+
+  function bindEditDialog() {
+    $('#edSave').addEventListener('click', () => {
+      const m = store.data.mistakes.find((x) => x.id === editingId);
+      if (m) {
+        m.answer = $('#edAnswer').value.trim();
+        m.myError = $('#edMyError').value.trim();
+        m.notes = $('#edNotes').value.trim();
+        revealed.add(m.id);
+        save();
+        toast('訂正內容已更新');
+      }
+      $('#editDialog').close();
+    });
+  }
+
   /* 匯出複習卷：組出列印用版面後叫瀏覽器列印（可存成 PDF） */
   async function buildPrintSheet() {
     let list = store.data.mistakes.filter((m) => !m.mastered);
@@ -1148,6 +1318,7 @@
               (m.reasons || []).length ? '　易錯：' + m.reasons.map(esc).join('、') : ''}</p>
             ${m.imageId && imgs[m.imageId] ? `<img class="ps-img" src="${imgs[m.imageId]}" alt="">` : ''}
             <div class="ps-answer"><span>作答</span></div>
+            ${m.answer || m.notes ? `<div class="ps-key"><b>參考</b>${esc([m.answer, m.notes].filter(Boolean).join('　'))}</div>` : ''}
           </li>`).join('')}
       </ol>
       <p class="ps-foot">學測戰情室・${esc(scope)}錯題複習卷</p>`;
@@ -1569,6 +1740,7 @@
     bindExams();
     bindMistakes();
     bindCertificate();
+    bindEditDialog();
     bindDialogs();
     bindBackup();
     bindTaskEditor();

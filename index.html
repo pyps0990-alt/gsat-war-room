@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=9">
+<link rel="stylesheet" href="./styles.css?v=10">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -191,6 +191,23 @@
       <p class="empty" id="subjectEmpty">還沒有分科紀錄。在「今日」選科目後記時數，這裡就會看到分配。</p>
     </section>
 
+    <!-- 弱點分析 -->
+    <section class="card card-weak span-2" data-group="stats" aria-labelledby="wkaTitle">
+      <div class="card-head">
+        <h2 id="wkaTitle">弱點分析</h2>
+        <span class="muted" id="weakCount"></span>
+      </div>
+      <div class="weak-block">
+        <h3 class="weak-h">最常錯的單元</h3>
+        <ul class="subject-bars" id="weakUnits"></ul>
+      </div>
+      <div class="weak-block">
+        <h3 class="weak-h">最常見的錯誤原因</h3>
+        <ul class="subject-bars" id="weakReasons"></ul>
+      </div>
+      <p class="empty" id="weakEmpty">還沒有足夠的錯題可以分析。收錄幾題之後，這裡會告訴你該補哪裡。</p>
+    </section>
+
     <!-- 模擬考成績 -->
     <section class="card card-exams span-2" data-group="stats" aria-labelledby="exTitle">
       <div class="card-head">
@@ -254,9 +271,34 @@
     <section class="card card-mistakes span-4" data-group="mistakes" aria-labelledby="mkTitle">
       <div class="card-head">
         <h2 id="mkTitle">錯題本</h2>
-        <button class="btn btn-ghost btn-sm" type="button" id="printBtn">匯出複習卷</button>
+        <div class="head-actions">
+          <button class="btn btn-ghost btn-sm" type="button" id="quizToggle" aria-pressed="false">自測模式</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="printBtn">匯出複習卷</button>
+        </div>
       </div>
-      <div class="filters" id="subjectFilter" role="group" aria-label="科目篩選"></div>
+
+      <div class="mk-tools">
+        <input type="search" id="mkSearch" placeholder="搜尋題目、單元、答案或筆記" aria-label="搜尋錯題">
+        <button class="btn btn-ghost btn-sm" type="button" id="filterToggle" aria-expanded="false">
+          篩選<span class="filter-count" id="filterCount" hidden>0</span>
+        </button>
+      </div>
+
+      <div class="filter-panel" id="filterPanel" hidden>
+        <div class="filter-group">
+          <span class="filter-label">科目</span>
+          <div class="filters" id="subjectFilter" role="group" aria-label="科目篩選"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">錯誤原因</span>
+          <div class="filters" id="reasonFilter" role="group" aria-label="錯誤原因篩選"></div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">狀態</span>
+          <div class="filters" id="statusFilter" role="group" aria-label="狀態篩選"></div>
+        </div>
+        <button class="link-btn" type="button" id="filterClear">清除全部篩選</button>
+      </div>
 
       <form class="mistake-form" id="mistakeForm">
         <div class="field field-grow">
@@ -282,6 +324,23 @@
           <button class="btn btn-ghost btn-sm" type="button" id="imagePick">選擇圖片</button>
           <button class="btn btn-ghost btn-sm" type="button" id="imageClear" hidden>移除</button>
         </div>
+        <details class="mk-more">
+          <summary>訂正內容（選填，自測時會先遮起來）</summary>
+          <div class="mk-more-fields">
+            <div class="field">
+              <label for="mkAnswer">正確答案</label>
+              <input type="text" id="mkAnswer" placeholder="例如：(C)　或　向心力指向圓心" maxlength="120">
+            </div>
+            <div class="field">
+              <label for="mkMyError">我錯在哪</label>
+              <input type="text" id="mkMyError" placeholder="用自己的話寫，一週後回來才看得懂" maxlength="120">
+            </div>
+            <div class="field">
+              <label for="mkNotes">訂正筆記</label>
+              <textarea id="mkNotes" rows="3" placeholder="解題步驟、關鍵觀念、下次要注意什麼" maxlength="600"></textarea>
+            </div>
+          </div>
+        </details>
         <button class="btn btn-primary" type="submit">收錄錯題</button>
       </form>
 
@@ -411,6 +470,28 @@
   </div>
 </dialog>
 
+<!-- 補充訂正內容 -->
+<dialog id="editDialog">
+  <h2>補充訂正</h2>
+  <p class="dialog-note" id="editTitle"></p>
+  <div class="field">
+    <label for="edAnswer">正確答案</label>
+    <input type="text" id="edAnswer" maxlength="120">
+  </div>
+  <div class="field">
+    <label for="edMyError">我錯在哪</label>
+    <input type="text" id="edMyError" maxlength="120">
+  </div>
+  <div class="field">
+    <label for="edNotes">訂正筆記</label>
+    <textarea id="edNotes" rows="4" maxlength="600"></textarea>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost btn-sm" type="button" data-close>取消</button>
+    <button class="btn btn-primary btn-sm" type="button" id="edSave">儲存</button>
+  </div>
+</dialog>
+
 <!-- 圖片放大 -->
 <dialog id="lightbox">
   <button class="lb-close" type="button" data-close aria-label="關閉">✕</button>
@@ -447,7 +528,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=9"></script>
-<script src="./google.js?v=9"></script>
+<script src="./app.js?v=10"></script>
+<script src="./google.js?v=10"></script>
 </body>
 </html>

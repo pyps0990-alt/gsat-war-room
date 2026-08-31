@@ -832,6 +832,97 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
 }
 @media (max-width: 640px) { .image-drop { grid-column: span 1; } }
 
+/* ---------- 錯題搜尋與篩選 ---------- */
+.head-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.mk-tools { display: flex; gap: 9px; margin-bottom: 12px; }
+.mk-tools input[type="search"] {
+  flex: 1; min-width: 0;
+  width: 100%; padding: 11px 14px; min-height: 44px;
+  border: 1px solid var(--border); border-radius: var(--r-m);
+  background: var(--bg);
+  -webkit-appearance: none;
+}
+.mk-tools .btn { flex-shrink: 0; position: relative; }
+.filter-count {
+  display: inline-grid; place-items: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 99px;
+  background: var(--primary); color: #FFFDF9;
+  font-size: 11px; font-weight: 500;
+}
+[data-theme="dark"] .filter-count { color: #1C1A18; }
+
+.filter-panel {
+  display: grid; gap: 13px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--bg);
+}
+.filter-group { display: grid; gap: 7px; }
+.filter-label { font-size: 12.5px; color: var(--text-2); }
+.filter-panel .link-btn { justify-self: start; }
+
+/* ---------- 訂正內容 ---------- */
+.mk-more { grid-column: span 3; }
+.mk-more summary {
+  font-size: 13.5px; color: var(--text-2);
+  cursor: pointer; padding: 6px 0;
+  list-style: none;
+}
+.mk-more summary::-webkit-details-marker { display: none; }
+.mk-more summary::before { content: "▸ "; }
+.mk-more[open] summary::before { content: "▾ "; }
+.mk-more-fields { display: grid; gap: 11px; padding-top: 8px; }
+@media (max-width: 640px) { .mk-more { grid-column: span 1; } }
+
+textarea {
+  width: 100%; min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--bg);
+  resize: vertical;
+  line-height: 1.65;
+  transition: border-color .25s var(--ease);
+}
+textarea:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+
+.mi-solution {
+  margin-top: 9px;
+  padding: 11px 14px;
+  border-radius: var(--r-s);
+  background: var(--surface-2);
+  display: grid; gap: 6px;
+}
+.mi-solution p { font-size: 14px; line-height: 1.65; word-break: break-word; }
+.sol-notes { white-space: pre-wrap; }
+.sol-label {
+  display: inline-block;
+  font-size: 11.5px; color: var(--text-2);
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.mi-reveal { margin-top: 9px; }
+
+.card-mistakes.is-quiz .mistake-item { border-color: color-mix(in srgb, var(--primary) 35%, transparent); }
+
+.weak-block { margin-bottom: 18px; }
+.weak-block:last-of-type { margin-bottom: 0; }
+.weak-h {
+  font-family: var(--sans);
+  font-size: 12.5px; font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
 /* ---------- 錯題清單 ---------- */
 .due-banner {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -1147,6 +1238,16 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
     position: absolute; top: 2pt; left: 4pt;
     font-size: 8.5pt; color: #999;
   }
+
+  .ps-key {
+    margin-top: 4pt;
+    padding: 4pt 6pt;
+    border-left: 2pt solid #bbb;
+    font-size: 9.5pt;
+    color: #555;
+    line-height: 1.5;
+  }
+  .ps-key b { margin-right: 6pt; color: #333; }
 
   .ps-foot { margin-top: 14pt; font-size: 9pt; color: #777; text-align: center; }
 
