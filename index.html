@@ -390,6 +390,13 @@
     <input type="file" id="importInput" accept="application/json" hidden>
   </div>
 
+  <div class="backup-bar" id="firebaseBar" data-group="settings" hidden>
+    <p class="backup-status" id="fbStatus"></p>
+    <button class="btn btn-primary btn-sm" type="button" id="fbSignIn" hidden>用 Google 登入</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="fbSyncNow" hidden>立即同步</button>
+    <button class="btn btn-ghost btn-sm" type="button" id="fbSignOut" hidden>登出</button>
+  </div>
+
   <div class="backup-bar" id="googleBar" data-group="settings" hidden>
     <p class="backup-status" id="gStatus"></p>
     <button class="btn btn-primary btn-sm" type="button" id="gSignIn" hidden>連結 Google 帳號</button>
@@ -530,5 +537,6 @@
 
 <script src="./app.js?v=10"></script>
 <script src="./google.js?v=10"></script>
+<script type="module" src="./firebase.js?v=10"></script>
 </body>
 </html>

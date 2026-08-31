@@ -134,6 +134,7 @@
         toast('儲存失敗，瀏覽器空間可能已滿。請先匯出備份。');
         console.error(e);
       }
+      window.appCloudSync?.schedulePush();   // 已登入才會真的送出
     },
     day(dateStr) {
       const days = this.data.days;
@@ -1750,10 +1751,24 @@
     bindCursor();
     renderAll();
 
-    // 供 google.js 使用
+    // 供 google.js / firebase.js 使用
     window.appToast = toast;
     window.appExportPayload = exportPayload;
     window.appImportPayload = importPayload;
+
+    // 雲端同步只帶文字資料，圖片走 Drive
+    window.appCloudSnapshot = () => JSON.parse(JSON.stringify(store.data));
+    window.appApplyCloud = async (cloud) => {
+      const { syncedAt, ...data } = cloud;
+      store.data = Object.assign(defaults(), data);
+      thumbCache.clear();
+      taskSig = '';
+      store.save();
+      applyTheme(store.data.theme ?? 'light');
+      applyZoom(store.data.zoom || 1);
+      renderTaskEditor();
+      renderAll();
+    };
 
     $$('.card').forEach((c, i) => {
       if (reduceMotion) return;

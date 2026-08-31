@@ -227,7 +227,14 @@
     renderBar();
   }
 
-  window.googleAuth = { isSignedIn, signIn, signOut, sendMail, backup, restore, configured: !!CLIENT_ID };
+  /* Firebase 登入時已經拿到帶 Drive 權限的存取權杖，直接沿用，
+     使用者就不必再登入第二次 */
+  function adoptToken(accessToken, expiresInSec = 3600) {
+    saveToken({ access_token: accessToken, expires_at: Date.now() + (expiresInSec - 60) * 1000 });
+    renderBar();
+  }
+
+  window.googleAuth = { isSignedIn, signIn, signOut, sendMail, backup, restore, adoptToken, configured: !!CLIENT_ID };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
