@@ -9,9 +9,18 @@
    - reflect：看學生自己寫的「我錯在哪」，給一次回饋就停，不追加提示
    ============================================================ */
 
-const MODEL = 'gemini-2.0-flash';
-const ENDPOINT = (key) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+/* 模型會退役（gemini-2.0-flash 就是這樣 404 的）。
+   預設用 gemini-flash-latest 這個永遠指向現行 flash 的別名，
+   另外準備後備清單，單一模型下架不會讓功能整個停擺。
+   要指定特定模型就設環境變數 GEMINI_MODEL。 */
+const MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-flash-latest',
+  'gemini-2.5-flash'
+].filter(Boolean);
+
+const ENDPOINT = (model, key) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
 const SUBJECTS = ['國文', '英文', '數A', '物理', '化學', '生物', '地科'];
 const REASONS = ['觀念混淆', '計算失誤', '審題粗心', '公式不熟', '題型新穎'];
@@ -35,21 +44,27 @@ async function callGemini(key, parts, schema) {
     }
   };
 
-  const res = await fetch(ENDPOINT(key), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  let lastErr = '';
+  for (const model of MODELS) {
+    const res = await fetch(ENDPOINT(model, key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Gemini ${res.status}: ${detail.slice(0, 300)}`);
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Gemini 沒有回傳內容');
+      return JSON.parse(text);
+    }
+
+    lastErr = `${res.status} ${(await res.text()).slice(0, 200)}`;
+    // 模型不存在或已下架才換下一個；其他錯誤（金鑰無效、額度用盡）直接回報
+    if (res.status !== 404) break;
+    console.warn(`模型 ${model} 不可用，改試下一個：${lastErr}`);
   }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini 沒有回傳內容');
-  return JSON.parse(text);
+  throw new Error(`Gemini ${lastErr}`);
 }
 
 module.exports = async (req, res) => {
