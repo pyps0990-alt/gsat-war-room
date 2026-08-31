@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=14">
+<link rel="stylesheet" href="./styles.css?v=15">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -354,6 +354,11 @@
         <button class="btn btn-primary" type="submit">收錄錯題</button>
       </form>
 
+      <div class="todo-banner" id="todoBanner" hidden>
+        <p>有 <strong id="todoCount">0</strong> 題只收錄了題目，還沒寫訂正。自測模式測不到它們，複習卷也沒有參考答案。</p>
+        <button class="btn btn-ghost btn-sm" type="button" id="todoJump">只看待訂正</button>
+      </div>
+
       <div class="due-banner" id="dueBanner" hidden>
         <p>今天有 <strong id="dueCount">0</strong> 題該重寫了。趁記憶還在，先把它們解決掉。</p>
         <button class="btn btn-ghost btn-sm" type="button" id="dueJump">只看待重寫</button>
@@ -554,8 +559,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=14"></script>
-<script src="./google.js?v=14"></script>
-<script type="module" src="./firebase.js?v=14"></script>
+<script src="./app.js?v=15"></script>
+<script src="./google.js?v=15"></script>
+<script type="module" src="./firebase.js?v=15"></script>
 </body>
 </html>

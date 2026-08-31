@@ -626,6 +626,7 @@
   let statusFilter = '全部';          // 全部 / 待重寫 / 未掌握 / 已掌握
   let searchTerm = '';
   let dueOnly = false;
+  let todoOnly = false;
   let quizMode = false;
   const revealed = new Set();         // 自測模式下已翻開答案的題目
   const thumbCache = new Map();
@@ -645,6 +646,7 @@
       if (statusFilter === '未掌握' && m.mastered) return false;
       if (statusFilter === '已掌握' && !m.mastered) return false;
       if (dueOnly && !isDue(m)) return false;
+      if (todoOnly && !needsSolution(m)) return false;
       if (q) {
         const hay = [m.summary, m.unit, m.answer, m.myError, m.notes, m.subject,
           ...(m.reasons || [])].filter(Boolean).join(' ').toLowerCase();
@@ -657,11 +659,18 @@
   const activeFilterCount = () =>
     (subjectFilter !== '全部' ? 1 : 0) + reasonFilter.size + (statusFilter !== '全部' ? 1 : 0);
 
+  const needsSolution = (m) => !m.mastered && !(m.answer || m.myError || m.notes);
+
   function renderMistakes() {
     const all = store.data.mistakes;
     const dueList = all.filter(isDue);
     $('#dueBanner').hidden = dueList.length === 0;
     $('#dueCount').textContent = dueList.length;
+
+    // 只收錄題目卻沒寫訂正的，累積起來會讓錯題本變成一堆空殼
+    const todo = all.filter(needsSolution).length;
+    $('#todoBanner').hidden = todo === 0;
+    $('#todoCount').textContent = todo;
 
     let list = filteredMistakes();
 
@@ -711,6 +720,7 @@
               <span class="tag tag-subject">${esc(m.subject)}</span>
               ${m.unit ? `<span class="tag">${esc(m.unit)}</span>` : ''}
               ${showReasons ? (m.reasons || []).map((r) => `<span class="tag">${esc(r)}</span>`).join('') : ''}
+              ${hasSolution || m.mastered ? '' : '<span class="tag tag-todo">待訂正</span>'}
             </div>
             ${solution}
             <p class="mi-due ${due ? 'due-now' : ''}">${dueText}</p>
@@ -719,7 +729,7 @@
               <button class="btn btn-primary btn-sm" data-review-ok="${m.id}">重寫答對</button>
               <button class="btn btn-ghost btn-sm" data-review-no="${m.id}">還是錯</button>
               <button class="btn btn-ghost btn-sm" data-mk-reflect="${m.id}">反思</button>
-              <button class="btn btn-ghost btn-sm" data-mk-edit="${m.id}">補充訂正</button>
+              <button class="btn ${hasSolution ? 'btn-ghost' : 'btn-primary'} btn-sm" data-mk-edit="${m.id}">${hasSolution ? '補充訂正' : '寫下訂正'}</button>
             </div>`}
           </div>
           <button class="mi-del" data-mk-del="${m.id}" aria-label="刪除錯題">✕</button>
@@ -1266,9 +1276,19 @@
 
     $('#printBtn').addEventListener('click', buildPrintSheet);
 
+    $('#todoJump').addEventListener('click', () => {
+      todoOnly = !todoOnly;
+      if (todoOnly) dueOnly = false;
+      $('#todoJump').textContent = todoOnly ? '顯示全部' : '只看待訂正';
+      $('#dueJump').textContent = '只看待重寫';
+      renderMistakes();
+    });
+
     $('#dueJump').addEventListener('click', () => {
       dueOnly = !dueOnly;
+      if (dueOnly) todoOnly = false;
       $('#dueJump').textContent = dueOnly ? '顯示全部' : '只看待重寫';
+      $('#todoJump').textContent = '只看待訂正';
       renderMistakes();
     });
   }
@@ -1303,7 +1323,11 @@
       if (out.summary) $('#mkSummary').value = out.summary;
       if (out.subject && SUBJECTS.includes(out.subject)) $('#mkSubject').value = out.subject;
       if (out.unit) $('#mkUnit').value = out.unit;
-      toast('已填好，請確認內容再收錄。');
+
+      // AI 只讀題目，答案與訂正要自己寫 —— 展開欄位提醒，不然會收錄一題空殼
+      $('.mk-more').open = true;
+      $('#mkAnswer').focus();
+      toast('題目讀好了。答案和訂正自己寫，那才是有效的訂正。');
     } catch (e) {
       console.error(e);
       toast('AI 辨識失敗：' + e.message);

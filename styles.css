@@ -997,6 +997,24 @@ textarea:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--bord
 .due-banner strong { color: var(--accent-ink); font-family: var(--serif); }
 .due-banner p { font-size: 14px; flex: 1; }
 
+.todo-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 13px 18px;
+  margin-bottom: 12px;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.todo-banner p { font-size: 14px; flex: 1; min-width: 160px; line-height: 1.6; }
+.todo-banner strong { color: var(--accent-ink); font-family: var(--serif); }
+@media (max-width: 640px) { .todo-banner .btn { width: 100%; } }
+
+.tag-todo {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
 .mistake-list { display: grid; gap: 11px; }
 .mistake-item {
   display: flex; gap: 15px; align-items: flex-start;
