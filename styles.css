@@ -1258,64 +1258,6 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
 }
 .rise-in { animation: riseIn .45s var(--ease) both; }
 
-/* ---------- 複習卷列印 ---------- */
-#printSheet { display: none; }
-
-@media print {
-  /* 只印複習卷 */
-  body > *:not(#printSheet) { display: none !important; }
-  .grain, .cursor-dot, .tabbar, .toast { display: none !important; }
-
-  html, body {
-    background: #fff !important;
-    color: #000 !important;
-    font-size: 12pt;
-    zoom: 1 !important;
-  }
-
-  #printSheet {
-    display: block !important;
-    padding: 0;
-    font-family: "Noto Serif TC", Georgia, serif;
-  }
-
-  .ps-head { border-bottom: 2px solid #000; padding-bottom: 8pt; margin-bottom: 14pt; }
-  .ps-head h1 { font-size: 17pt; margin: 0 0 5pt; }
-  .ps-head p { font-size: 10pt; color: #444; }
-
-  .ps-list { list-style: decimal; padding-left: 20pt; margin: 0; }
-  .ps-item { margin-bottom: 16pt; break-inside: avoid; page-break-inside: avoid; }
-  .ps-q { font-size: 12pt; line-height: 1.6; margin-bottom: 3pt; }
-  .ps-meta { font-size: 9.5pt; color: #555; margin-bottom: 5pt; }
-  .ps-img { max-width: 100%; max-height: 62mm; display: block; margin: 5pt 0; }
-
-  .ps-answer {
-    border: 1px dashed #999;
-    border-radius: 3pt;
-    height: 22mm;
-    margin-top: 5pt;
-    position: relative;
-  }
-  .ps-answer span {
-    position: absolute; top: 2pt; left: 4pt;
-    font-size: 8.5pt; color: #999;
-  }
-
-  .ps-key {
-    margin-top: 4pt;
-    padding: 4pt 6pt;
-    border-left: 2pt solid #bbb;
-    font-size: 9.5pt;
-    color: #555;
-    line-height: 1.5;
-  }
-  .ps-key b { margin-right: 6pt; color: #333; }
-
-  .ps-foot { margin-top: 14pt; font-size: 9pt; color: #777; text-align: center; }
-
-  @page { margin: 14mm; }
-}
-
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

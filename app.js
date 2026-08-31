@@ -1398,50 +1398,100 @@
     });
   }
 
-  /* 匯出複習卷：組出列印用版面後叫瀏覽器列印（可存成 PDF） */
-  async function buildPrintSheet() {
-    let list = store.data.mistakes.filter((m) => !m.mastered);
-    if (subjectFilter !== '全部') list = list.filter((m) => m.subject === subjectFilter);
-    if (dueOnly) list = list.filter(isDue);
+  /* 匯出複習卷：開一個獨立分頁排版後列印（可存成 PDF）
 
+     為什麼不直接印目前這一頁：加到主畫面的 iOS app 是 standalone 模式，
+     window.print() 在那裡通常沒有作用。開新分頁會跳回 Safari，
+     在那邊列印／分享才正常。 */
+  function printSheetHtml(list, imgs, scope) {
+    const items = list.map((m) => `
+      <li class="ps-item">
+        <p class="ps-q">${esc(m.summary)}</p>
+        <p class="ps-meta">${esc(m.subject)}${m.unit ? '・' + esc(m.unit) : ''}${
+          (m.reasons || []).length ? '　易錯：' + m.reasons.map(esc).join('、') : ''}</p>
+        ${m.imageId && imgs[m.imageId] ? `<img class="ps-img" src="${imgs[m.imageId]}" alt="">` : ''}
+        <div class="ps-answer"><span>作答</span></div>
+        ${m.answer || m.notes ? `<div class="ps-key"><b>參考</b>${esc([m.answer, m.notes].filter(Boolean).join('　'))}</div>` : ''}
+      </li>`).join('');
+
+    return `<!DOCTYPE html><html lang="zh-Hant"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>錯題複習卷・${esc(scope)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #fff; color: #000;
+         font-family: "Noto Serif TC", Georgia, "Songti TC", serif; font-size: 15px; }
+  .ps-bar { position: sticky; top: 0; background: #fff; padding-bottom: 12px;
+            border-bottom: 1px solid #ddd; margin-bottom: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .ps-bar button { font: inherit; font-size: 14px; padding: 10px 20px; border-radius: 10px;
+                   border: 1px solid #3A5A40; background: #3A5A40; color: #fff; cursor: pointer; }
+  .ps-bar .ghost { background: #fff; color: #3A5A40; }
+  .ps-bar p { margin: 0; font-size: 13px; color: #666; flex-basis: 100%; }
+  .ps-head { border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 18px; }
+  .ps-head h1 { font-size: 21px; margin: 0 0 6px; }
+  .ps-head .sub { font-size: 13px; color: #444; margin: 0; }
+  .ps-list { padding-left: 22px; margin: 0; }
+  .ps-item { margin-bottom: 22px; break-inside: avoid; page-break-inside: avoid; }
+  .ps-q { font-size: 15px; line-height: 1.65; margin: 0 0 4px; }
+  .ps-meta { font-size: 12px; color: #555; margin: 0 0 7px; }
+  .ps-img { max-width: 100%; max-height: 62mm; display: block; margin: 7px 0; }
+  .ps-answer { border: 1px dashed #999; border-radius: 4px; height: 24mm; margin-top: 7px; position: relative; }
+  .ps-answer span { position: absolute; top: 3px; left: 6px; font-size: 11px; color: #999; }
+  .ps-key { margin-top: 6px; padding: 6px 9px; border-left: 3px solid #bbb;
+            font-size: 12.5px; color: #555; line-height: 1.55; }
+  .ps-key b { margin-right: 8px; color: #333; }
+  .ps-foot { margin-top: 20px; font-size: 12px; color: #777; text-align: center; }
+  @media print { .ps-bar { display: none; } body { padding: 0; } @page { margin: 14mm; } }
+</style></head><body>
+<div class="ps-bar">
+  <button onclick="window.print()">列印／存成 PDF</button>
+  <button class="ghost" onclick="window.close()">關閉</button>
+  <p>手機若沒跳出列印視窗，用瀏覽器的「分享 → 列印」也可以存成 PDF。</p>
+</div>
+<div class="ps-head">
+  <h1>錯題複習卷・${esc(scope)}</h1>
+  <p class="sub">${fmtDate(today())}　共 ${list.length} 題　　姓名 ____________　得分 ________</p>
+</div>
+<ol class="ps-list">${items}</ol>
+<p class="ps-foot">學測戰情室・${esc(scope)}錯題複習卷</p>
+</body></html>`;
+  }
+
+  function buildPrintSheet() {
+    const list = filteredMistakes().filter((m) => !m.mastered);
     if (!list.length) { toast('目前的篩選條件下沒有題目可以匯出。'); return; }
-    toast('正在準備複習卷…');
 
-    // 圖片要轉成 data URL，列印時 blob: 網址不一定讀得到
-    const imgs = {};
-    for (const m of list) {
-      if (!m.imageId) continue;
-      try {
-        const blob = await idb.get(m.imageId);
-        if (blob) imgs[m.imageId] = await blobToDataURL(blob);
-      } catch { /* 讀不到就只印文字 */ }
-    }
+    // window.open 必須同步呼叫，否則會被當成非使用者操作而擋掉
+    const win = window.open('', '_blank');
+    if (!win) { toast('瀏覽器擋下了新分頁，請允許彈出視窗後再試。'); return; }
+    win.document.write('<!DOCTYPE html><meta charset="UTF-8"><title>準備中…</title>' +
+      '<p style="font-family:sans-serif;padding:24px">正在準備複習卷…</p>');
 
-    const scope = subjectFilter === '全部' ? '全科' : subjectFilter;
-    $('#printSheet').innerHTML = `
-      <div class="ps-head">
-        <h1>錯題複習卷・${esc(scope)}</h1>
-        <p>${fmtDate(today())}　共 ${list.length} 題　　姓名 ____________　得分 ________</p>
-      </div>
-      <ol class="ps-list">
-        ${list.map((m) => `
-          <li class="ps-item">
-            <p class="ps-q">${esc(m.summary)}</p>
-            <p class="ps-meta">${esc(m.subject)}${m.unit ? '・' + esc(m.unit) : ''}${
-              (m.reasons || []).length ? '　易錯：' + m.reasons.map(esc).join('、') : ''}</p>
-            ${m.imageId && imgs[m.imageId] ? `<img class="ps-img" src="${imgs[m.imageId]}" alt="">` : ''}
-            <div class="ps-answer"><span>作答</span></div>
-            ${m.answer || m.notes ? `<div class="ps-key"><b>參考</b>${esc([m.answer, m.notes].filter(Boolean).join('　'))}</div>` : ''}
-          </li>`).join('')}
-      </ol>
-      <p class="ps-foot">學測戰情室・${esc(scope)}錯題複習卷</p>`;
+    (async () => {
+      // 圖片轉成 data URL，因為 blob: 網址在新分頁讀不到
+      const imgs = {};
+      for (const m of list) {
+        if (!m.imageId) continue;
+        try {
+          const blob = await idb.get(m.imageId);
+          if (blob) imgs[m.imageId] = await blobToDataURL(blob);
+        } catch { /* 讀不到就只印文字 */ }
+      }
 
-    document.body.classList.add('printing');
-    // 等圖片解碼完再列印，否則可能印出空白圖
-    await Promise.all([...$('#printSheet').querySelectorAll('img')]
-      .map((img) => img.decode().catch(() => {})));
-    window.print();
-    setTimeout(() => document.body.classList.remove('printing'), 500);
+      const scope = subjectFilter === '全部' ? '全科' : subjectFilter;
+      win.document.open();
+      win.document.write(printSheetHtml(list, imgs, scope));
+      win.document.close();
+
+      // 等圖片解碼完再叫列印，否則可能印出空白圖
+      win.addEventListener('load', () => {
+        Promise.all([...win.document.images].map((img) => img.decode().catch(() => {})))
+          .then(() => { try { win.print(); } catch { /* 使用者可用頁面上的按鈕 */ } });
+      }, { once: true });
+
+      toast(`複習卷已開啟，共 ${list.length} 題。`);
+    })();
   }
 
   async function setImage(file) {
