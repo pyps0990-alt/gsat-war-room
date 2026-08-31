@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=10">
+<link rel="stylesheet" href="./styles.css?v=11">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -322,6 +322,7 @@
           <p class="image-drop-text" id="imageDropText">附上題目截圖：拖曳、貼上（Ctrl+V），或點右方按鈕選擇／拍照。</p>
           <input type="file" id="imageInput" accept="image/*" hidden>
           <button class="btn btn-ghost btn-sm" type="button" id="imagePick">選擇圖片</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="aiExtract" hidden>AI 讀題填表</button>
           <button class="btn btn-ghost btn-sm" type="button" id="imageClear" hidden>移除</button>
         </div>
         <details class="mk-more">
@@ -397,14 +398,7 @@
     <button class="btn btn-ghost btn-sm" type="button" id="fbSignOut" hidden>登出</button>
   </div>
 
-  <div class="backup-bar" id="googleBar" data-group="settings" hidden>
-    <p class="backup-status" id="gStatus"></p>
-    <button class="btn btn-primary btn-sm" type="button" id="gSignIn" hidden>連結 Google 帳號</button>
-    <button class="btn btn-ghost btn-sm" type="button" id="gBackup" hidden>備份到 Drive</button>
-    <button class="btn btn-ghost btn-sm" type="button" id="gRestore" hidden>從 Drive 還原</button>
-    <button class="btn btn-ghost btn-sm" type="button" id="gSignOut" hidden>取消連結</button>
-  </div>
-
+  
   <p class="footnote" data-group="settings"><button class="link-btn" type="button" id="settingsBtn">設定每日時數目標</button> · <button class="link-btn" type="button" id="resetBtn">清除全部資料</button></p>
 </main>
 
@@ -477,6 +471,25 @@
   </div>
 </dialog>
 
+<!-- 反思：先自己想過，AI 才給一次回饋 -->
+<dialog id="reflectDialog">
+  <h2>先想想：你錯在哪？</h2>
+  <p class="dialog-note" id="reflectQ"></p>
+  <div class="field">
+    <label for="reflectInput">用自己的話寫下來</label>
+    <textarea id="reflectInput" rows="4" maxlength="300" placeholder="例如：我把向心力當成切線方向，沒想到它其實指向圓心"></textarea>
+  </div>
+  <div class="reflect-result" id="reflectResult" hidden>
+    <p class="reflect-verdict" id="reflectVerdict"></p>
+    <p class="reflect-feedback" id="reflectFeedback"></p>
+    <p class="reflect-once">這是這一題唯一一次回饋，接下來自己完成最後一步。</p>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost btn-sm" type="button" data-close>關閉</button>
+    <button class="btn btn-primary btn-sm" type="button" id="reflectSend">送出，看看我抓對了沒</button>
+  </div>
+</dialog>
+
 <!-- 補充訂正內容 -->
 <dialog id="editDialog">
   <h2>補充訂正</h2>
@@ -535,8 +548,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=10"></script>
-<script src="./google.js?v=10"></script>
-<script type="module" src="./firebase.js?v=10"></script>
+<script src="./app.js?v=11"></script>
+<script src="./google.js?v=11"></script>
+<script type="module" src="./firebase.js?v=11"></script>
 </body>
 </html>

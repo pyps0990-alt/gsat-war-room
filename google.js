@@ -1,29 +1,27 @@
 /* ============================================================
-   google.js — Google 帳號整合
-   1) Gmail：兌換獎勵時把「兌換證書」寄到自己的信箱
-   2) Drive：把整包資料（打卡、錯題、圖片）備份成一個檔案，換裝置可還原
+   google.js — Google API 存取權杖
 
-   設定方式見 README-google-setup.md。
-   在下面填入你的 OAuth 用戶端 ID 之後，頁尾就會出現「連結 Google 帳號」。
-   留空的話整個模組會靜默停用，app 其他功能完全不受影響。
+   登入本身由 firebase.js 處理（Firebase Auth 的 Google 登入會一併
+   要到 drive.file 權限），這裡只負責：
+   - 保管那組存取權杖，過期時用 GIS 靜默換發
+   - 用 Gmail API 把兌換證書寄給使用者自己
+
+   資料備份已改由 Firestore 負責，不再需要 Drive 備份檔。
    ============================================================ */
 (() => {
   'use strict';
 
-  const CLIENT_ID = '175245453159-2ttjmdu5ehf9ss34r00ddbk7q8j09b8f.apps.googleusercontent.com';   // ← 貼上你的 OAuth 用戶端 ID（結尾是 .apps.googleusercontent.com）
+  const CLIENT_ID = '175245453159-2ttjmdu5ehf9ss34r00ddbk7q8j09b8f.apps.googleusercontent.com';
 
   const SCOPES = [
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/drive.file'
   ].join(' ');
 
-  const BACKUP_NAME = 'gsat-war-room-backup.json';
   const TOKEN_KEY = 'gsat-google-token';
-  const FILE_KEY = 'gsat-drive-file-id';
 
   let token = null;         // { access_token, expires_at }
   let tokenClient = null;
-  let gisReady = false;
 
   /* ---------- 小工具 ---------- */
   const b64 = (str) => {
@@ -41,6 +39,7 @@
     } catch { /* ignore */ }
     return null;
   };
+
   const saveToken = (t) => {
     token = t;
     try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify(t)); } catch { /* ignore */ }
@@ -48,28 +47,33 @@
 
   const isSignedIn = () => !!(token && token.expires_at > Date.now() + 60000);
 
-  /* ---------- 授權 ---------- */
+  /* Firebase 登入時已取得帶 Drive 權限的權杖，直接沿用，
+     使用者就不必為了圖片與寄信再登入第二次 */
+  function adoptToken(accessToken, expiresInSec = 3600) {
+    saveToken({ access_token: accessToken, expires_at: Date.now() + (expiresInSec - 60) * 1000 });
+  }
+
+  /* ---------- 權杖換發 ---------- */
   function initClient() {
     if (tokenClient || !window.google?.accounts?.oauth2) return;
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPES,
-      callback: () => {}   // 每次 requestAccessToken 前動態指定
+      callback: () => {}
     });
-    gisReady = true;
   }
 
-  function signIn() {
+  /* 權杖過期時換一組。使用者已經授權過，所以通常不會再跳視窗。 */
+  function refresh() {
     return new Promise((resolve, reject) => {
       initClient();
       if (!tokenClient) { reject(new Error('Google 登入元件尚未載入')); return; }
       tokenClient.callback = (res) => {
         if (res.error) { reject(new Error(res.error)); return; }
-        saveToken({ access_token: res.access_token, expires_at: Date.now() + (res.expires_in - 60) * 1000 });
-        renderBar();
+        adoptToken(res.access_token, res.expires_in);
         resolve(token);
       };
-      tokenClient.requestAccessToken({ prompt: isSignedIn() ? '' : 'consent' });
+      tokenClient.requestAccessToken({ prompt: '' });
     });
   }
 
@@ -79,23 +83,16 @@
     }
     token = null;
     try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
-    renderBar();
   }
 
-  const ensureToken = async () => { if (!isSignedIn()) await signIn(); return token.access_token; };
-
-  const authFetch = async (url, opts = {}) => {
-    const at = await ensureToken();
-    const res = await fetch(url, {
-      ...opts,
-      headers: { ...(opts.headers || {}), Authorization: `Bearer ${at}` }
-    });
-    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
-    return res;
+  const ensureToken = async () => {
+    if (!isSignedIn()) await refresh();
+    return token.access_token;
   };
 
   /* ---------- Gmail：寄兌換證書 ---------- */
   async function sendMail(to, subject, html) {
+    const at = await ensureToken();
     const message = [
       `To: ${to}`,
       `Subject: =?UTF-8?B?${b64(subject)}?=`,
@@ -106,135 +103,29 @@
       b64(html)
     ].join('\r\n');
 
-    await authFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${at}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ raw: b64url(message) })
     });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     return true;
   }
 
-  /* ---------- Drive：整包備份／還原 ---------- */
-  async function findBackupFile() {
-    const cached = localStorage.getItem(FILE_KEY);
-    if (cached) {
-      try {
-        await authFetch(`https://www.googleapis.com/drive/v3/files/${cached}?fields=id`);
-        return cached;
-      } catch { localStorage.removeItem(FILE_KEY); }
-    }
-    const q = encodeURIComponent(`name='${BACKUP_NAME}' and trashed=false`);
-    const res = await authFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&pageSize=1`);
-    const { files } = await res.json();
-    if (files?.length) { localStorage.setItem(FILE_KEY, files[0].id); return files[0].id; }
-    return null;
-  }
-
-  async function backup(payload) {
-    const body = JSON.stringify(payload);
-    const id = await findBackupFile();
-    const boundary = 'gsat' + Math.random().toString(36).slice(2);
-    const meta = id ? {} : { name: BACKUP_NAME, mimeType: 'application/json' };
-    const multipart =
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
-      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
-
-    const url = id
-      ? `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart&fields=id`
-      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id';
-
-    const res = await authFetch(url, {
-      method: id ? 'PATCH' : 'POST',
-      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
-      body: multipart
-    });
-    const out = await res.json();
-    if (out.id) localStorage.setItem(FILE_KEY, out.id);
-    localStorage.setItem('gsat-drive-last', new Date().toISOString());
-    renderBar();
-    return out.id;
-  }
-
-  async function restore() {
-    const id = await findBackupFile();
-    if (!id) throw new Error('Drive 上找不到備份檔');
-    const res = await authFetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
-    return res.json();
-  }
-
-  /* ---------- 頁尾 UI ---------- */
-  function renderBar() {
-    const bar = document.querySelector('#googleBar');
-    if (!bar) return;
-    const last = localStorage.getItem('gsat-drive-last');
-    if (isSignedIn()) {
-      bar.querySelector('#gStatus').textContent = last
-        ? `已連結 Google・最後備份 ${new Date(last).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}`
-        : '已連結 Google，還沒備份過。';
-      bar.querySelector('#gSignIn').hidden = true;
-      bar.querySelector('#gBackup').hidden = false;
-      bar.querySelector('#gRestore').hidden = false;
-      bar.querySelector('#gSignOut').hidden = false;
-    } else {
-      bar.querySelector('#gStatus').textContent = '連結 Google 帳號後，可自動備份到你的雲端硬碟，兌換證書也會直接寄到你的 Gmail。';
-      bar.querySelector('#gSignIn').hidden = false;
-      bar.querySelector('#gBackup').hidden = true;
-      bar.querySelector('#gRestore').hidden = true;
-      bar.querySelector('#gSignOut').hidden = true;
-    }
-  }
-
   function mount() {
-    const bar = document.querySelector('#googleBar');
-    if (!bar) return;
-    if (!CLIENT_ID) { bar.hidden = true; return; }   // 尚未設定 → 靜默停用
-    bar.hidden = false;
-
-    // 載入 Google Identity Services
+    if (!CLIENT_ID) return;
+    // 載入 GIS，供權杖過期時靜默換發
     const s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client';
     s.async = true;
     s.defer = true;
-    s.onload = () => { initClient(); renderBar(); };
+    s.onload = initClient;
     document.head.appendChild(s);
 
     token = loadToken();
-
-    bar.querySelector('#gSignIn').addEventListener('click', async () => {
-      try { await signIn(); window.appToast?.('已連結 Google 帳號'); }
-      catch (e) { console.error(e); window.appToast?.('連結失敗，請再試一次'); }
-    });
-    bar.querySelector('#gSignOut').addEventListener('click', signOut);
-
-    bar.querySelector('#gBackup').addEventListener('click', async () => {
-      try {
-        window.appToast?.('備份中…');
-        await backup(await window.appExportPayload());
-        window.appToast?.('已備份到你的雲端硬碟');
-      } catch (e) { console.error(e); window.appToast?.('備份失敗：' + e.message); }
-    });
-
-    bar.querySelector('#gRestore').addEventListener('click', async () => {
-      try {
-        const payload = await restore();
-        const when = payload?.exportedAt ? new Date(payload.exportedAt).toLocaleString('zh-TW') : '未知時間';
-        if (!confirm(`Drive 上的備份時間為 ${when}。\n還原會覆蓋這台裝置目前的所有資料，確定嗎？`)) return;
-        await window.appImportPayload(payload);
-        window.appToast?.('已從 Drive 還原');
-      } catch (e) { console.error(e); window.appToast?.('還原失敗：' + e.message); }
-    });
-
-    renderBar();
   }
 
-  /* Firebase 登入時已經拿到帶 Drive 權限的存取權杖，直接沿用，
-     使用者就不必再登入第二次 */
-  function adoptToken(accessToken, expiresInSec = 3600) {
-    saveToken({ access_token: accessToken, expires_at: Date.now() + (expiresInSec - 60) * 1000 });
-    renderBar();
-  }
-
-  window.googleAuth = { isSignedIn, signIn, signOut, sendMail, backup, restore, adoptToken, configured: !!CLIENT_ID };
+  window.googleAuth = { isSignedIn, adoptToken, signOut, sendMail, configured: !!CLIENT_ID };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();

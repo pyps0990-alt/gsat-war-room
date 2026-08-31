@@ -710,6 +710,7 @@
             <div class="mi-actions">
               <button class="btn btn-primary btn-sm" data-review-ok="${m.id}">重寫答對</button>
               <button class="btn btn-ghost btn-sm" data-review-no="${m.id}">還是錯</button>
+              <button class="btn btn-ghost btn-sm" data-mk-reflect="${m.id}">反思</button>
               <button class="btn btn-ghost btn-sm" data-mk-edit="${m.id}">補充訂正</button>
             </div>`}
           </div>
@@ -1214,6 +1215,8 @@
 
       if (reveal) { revealed.add(reveal.dataset.reveal); renderMistakes(); return; }
       if (edit) { openEditDialog(edit.dataset.mkEdit); return; }
+      const reflect = e.target.closest('[data-mk-reflect]');
+      if (reflect) { openReflect(reflect.dataset.mkReflect); return; }
 
       if (ok || no) {
         const id = (ok || no).dataset.reviewOk || (ok || no).dataset.reviewNo;
@@ -1254,6 +1257,102 @@
       dueOnly = !dueOnly;
       $('#dueJump').textContent = dueOnly ? '顯示全部' : '只看待重寫';
       renderMistakes();
+    });
+  }
+
+  /* ---------- AI（透過 /api/ai 代理，金鑰在伺服器端） ---------- */
+  async function callAI(payload) {
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `伺服器回應 ${res.status}`);
+    return data;
+  }
+
+  const blobToBase64 = async (blob) => (await blobToDataURL(blob)).split(',')[1];
+
+  /* 讀題自動填表 */
+  async function aiExtract() {
+    if (!pendingImage) { toast('請先選一張題目圖片。'); return; }
+    const btn = $('#aiExtract');
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = '辨識中…';
+    try {
+      const out = await callAI({
+        mode: 'extract',
+        image: await blobToBase64(pendingImage.blob),
+        mimeType: 'image/jpeg'
+      });
+      if (out.summary) $('#mkSummary').value = out.summary;
+      if (out.subject && SUBJECTS.includes(out.subject)) $('#mkSubject').value = out.subject;
+      if (out.unit) $('#mkUnit').value = out.unit;
+      toast('已填好，請確認內容再收錄。');
+    } catch (e) {
+      console.error(e);
+      toast('AI 辨識失敗：' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  /* 反思引導：先自己寫，AI 只評一次 */
+  let reflectingId = null;
+
+  function openReflect(id) {
+    const m = store.data.mistakes.find((x) => x.id === id);
+    if (!m) return;
+    reflectingId = id;
+    $('#reflectQ').textContent = m.summary;
+    $('#reflectInput').value = m.myError || '';
+    $('#reflectResult').hidden = true;
+    $('#reflectSend').disabled = false;
+    $('#reflectSend').textContent = '送出，看看我抓對了沒';
+    $('#reflectDialog').showModal();
+  }
+
+  function bindReflect() {
+    $('#aiExtract').addEventListener('click', aiExtract);
+
+    $('#reflectSend').addEventListener('click', async () => {
+      const m = store.data.mistakes.find((x) => x.id === reflectingId);
+      const myError = $('#reflectInput').value.trim();
+      if (!m || !myError) { toast('先寫下你覺得錯在哪。'); return; }
+
+      const btn = $('#reflectSend');
+      btn.disabled = true;
+      btn.textContent = '思考中…';
+      try {
+        const out = await callAI({
+          mode: 'reflect',
+          question: m.summary,
+          subject: m.subject,
+          myError
+        });
+
+        $('#reflectVerdict').textContent = out.verdict || '';
+        $('#reflectVerdict').className = 'reflect-verdict v-' +
+          (out.verdict === '準確' ? 'ok' : out.verdict === '部分正確' ? 'mid' : 'no');
+        $('#reflectFeedback').textContent = out.feedback || '';
+        $('#reflectResult').hidden = false;
+        btn.textContent = '已回饋';
+
+        // 把自我診斷存進錯題，AI 判定的錯誤類型也一併補上
+        m.myError = myError;
+        if (Array.isArray(out.reasons) && out.reasons.length) {
+          m.reasons = [...new Set([...(m.reasons || []), ...out.reasons])];
+        }
+        save();
+      } catch (e) {
+        console.error(e);
+        toast('AI 回饋失敗：' + e.message);
+        btn.disabled = false;
+        btn.textContent = '再試一次';
+      }
     });
   }
 
@@ -1341,6 +1440,7 @@
       prev.src = pendingImage.url;
       prev.hidden = false;
       $('#imageClear').hidden = false;
+      $('#aiExtract').hidden = false;
       $('#imageDropText').textContent = `已選擇圖片（${Math.round(blob.size / 1024)} KB），收錄時一併存入。`;
     } catch (err) {
       console.error(err);
@@ -1354,6 +1454,7 @@
     $('#imagePreview').hidden = true;
     $('#imagePreview').removeAttribute('src');
     $('#imageClear').hidden = true;
+    $('#aiExtract').hidden = true;
     $('#imageInput').value = '';
     $('#imageDropText').textContent = '附上題目截圖：拖曳、貼上（Ctrl+V），或點右方按鈕選擇／拍照。';
   }
@@ -1742,6 +1843,7 @@
     bindMistakes();
     bindCertificate();
     bindEditDialog();
+    bindReflect();
     bindDialogs();
     bindBackup();
     bindTaskEditor();

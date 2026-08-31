@@ -923,6 +923,29 @@ textarea:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--bord
   margin-bottom: 10px;
 }
 
+/* ---------- AI 反思回饋 ---------- */
+.reflect-result {
+  margin-top: 16px;
+  padding: 15px 17px;
+  border-radius: var(--r-m);
+  background: var(--surface-2);
+}
+.reflect-verdict {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 700;
+  margin-bottom: 7px;
+}
+.reflect-verdict.v-ok { color: var(--primary); }
+.reflect-verdict.v-mid { color: var(--accent-ink); }
+.reflect-verdict.v-no { color: var(--accent-ink); }
+.reflect-feedback { font-size: 14.5px; line-height: 1.75; }
+.reflect-once {
+  font-size: 12.5px; color: var(--text-2);
+  margin-top: 11px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+#reflectDialog { width: min(460px, calc(100% - 36px)); }
+
 /* ---------- 錯題清單 ---------- */
 .due-banner {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
