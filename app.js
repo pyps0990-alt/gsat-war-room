@@ -823,6 +823,7 @@
     renderSubjects();
     renderExams();
     renderWeak();
+    if ($('#pomoRing')) renderPomo();
     renderRewards();
     renderMistakes();
     renderTabDot();
@@ -1735,20 +1736,36 @@
     } catch { /* 沒有音訊權限就算了 */ }
   }
 
+  const RING_LEN = 2 * Math.PI * 98;   // 對應 SVG 裡 r = 98
+
   function renderPomo() {
     const p = pomoState();
     const left = pomoLeft(p);
     const mm = String(Math.floor(left / 60000)).padStart(2, '0');
     const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+    const isBreak = p.mode !== 'focus';
+
     $('#pomoTime').textContent = `${mm}:${ss}`;
     $('#pomoMode').textContent = p.mode === 'focus' ? '專注' : p.mode === 'long' ? '長休息' : '短休息';
-    $('#pomoMode').className = 'pomo-mode' + (p.mode === 'focus' ? '' : ' is-break');
-    $('#pomoBar').style.width = ((1 - left / pomoTotal(p)) * 100) + '%';
+    $('#pomoMode').className = 'pomo-mode' + (isBreak ? ' is-break' : '');
+    $('.card-pomo').classList.toggle('is-break', isBreak);
+
+    // 環從滿圈慢慢消耗掉
+    const progress = 1 - left / pomoTotal(p);
+    $('#pomoRing').style.strokeDashoffset = String(RING_LEN * (1 - progress));
+
+    $('#pomoSub').textContent = p.mode === 'focus' ? store.data.subject : '';
     $('#pomoStart').textContent = p.endsAt ? '暫停' : (left < pomoTotal(p) ? '繼續' : '開始');
+
+    // 本輪四顆番茄的進度點
+    const inRound = p.cycles % POMO.longEvery;
+    $('#pomoDots').innerHTML = Array.from({ length: POMO.longEvery }, (_, i) =>
+      `<li class="${i < (inRound === 0 && p.cycles > 0 && isBreak ? POMO.longEvery : inRound) ? 'done' : ''}"></li>`).join('');
+
     $('#pomoCycles').textContent = `今天 ${p.cycles} 顆`;
     $('#pomoHint').textContent = p.mode === 'focus'
-      ? `專注 ${POMO.focus} 分鐘，結束後自動加進「${store.data.subject}」的時數。`
-      : '休息一下，讓腦袋沉澱。';
+      ? `結束後自動加 ${round1(POMO.focus / 60)} 小時到「${store.data.subject}」`
+      : '休息一下，讓腦袋沉澱';
   }
 
   function pomoTick() {

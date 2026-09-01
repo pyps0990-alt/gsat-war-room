@@ -404,30 +404,79 @@ input, select, textarea { font: inherit; color: inherit; }
 .hours-subject select { width: auto; min-width: 96px; padding: 8px 12px; min-height: 38px; }
 .hours-total { font-size: 13px; color: var(--text-2); margin-top: 10px; line-height: 1.6; }
 
-/* ---------- 番茄鐘 ---------- */
+/* ---------- 番茄鐘（專注頁） ---------- */
+.card-pomo {
+  align-items: center;
+  text-align: center;
+  padding: 30px 24px 26px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--primary-soft) 0%, transparent 62%),
+    var(--surface);
+}
+
+.pomo-dial {
+  position: relative;
+  width: min(280px, 76vw);
+  aspect-ratio: 1;
+  margin-bottom: 22px;
+}
+.pomo-svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.pomo-svg circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+.ring-track { stroke: var(--surface-2); }
+.ring-fill {
+  stroke: var(--primary);
+  stroke-dasharray: 615.75;      /* 2πr, r = 98 */
+  stroke-dashoffset: 615.75;
+  transition: stroke-dashoffset .95s linear, stroke .4s var(--ease);
+}
+.is-break .ring-fill { stroke: var(--accent); }
+
+.pomo-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+}
 .pomo-mode {
-  font-size: 13px; letter-spacing: .16em; color: var(--primary);
-  font-weight: 500;
+  font-size: 12.5px; letter-spacing: .3em; text-indent: .3em;
+  color: var(--primary); font-weight: 500;
 }
 .pomo-mode.is-break { color: var(--accent-ink); }
 .pomo-time {
   font-family: var(--serif);
-  font-size: clamp(50px, 12vw, 72px);
+  font-size: clamp(46px, 15vw, 62px);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.1;
   letter-spacing: -.01em;
   font-variant-numeric: tabular-nums;
-  margin: 4px 0 14px;
 }
-.pomo-ring { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
-.pomo-ring-fill {
-  height: 100%; width: 0; border-radius: 99px;
-  background: var(--primary);
-  transition: width .9s linear;
+.pomo-sub { font-size: 13px; color: var(--text-2); }
+
+.pomo-dots { display: flex; gap: 9px; margin-bottom: 22px; }
+.pomo-dots li {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background-color .4s var(--ease), border-color .4s var(--ease);
 }
-.pomo-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 10px; }
-.card-pomo .hint { margin-top: auto; }
-@media (max-width: 640px) { .pomo-actions .btn { flex: 1; } }
+.pomo-dots li.done { background: var(--primary); border-color: var(--primary); }
+
+.pomo-actions { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; }
+.pomo-actions .btn-primary { min-width: 132px; }
+
+.pomo-foot {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  margin-top: 18px;
+  font-size: 12.5px; color: var(--text-2);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .card-pomo { padding: 26px 20px 22px; }
+  .pomo-actions { width: 100%; }
+  .pomo-actions .btn-primary { flex-basis: 100%; }
+  .pomo-actions .btn-ghost { flex: 1; }
+}
 
 /* ---------- 專注音樂 ---------- */
 .music-pane { margin-bottom: 16px; }
@@ -1336,7 +1385,7 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
     left: 0; right: 0; bottom: 0;
     z-index: 400;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 2px;
     padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
     background: color-mix(in srgb, var(--surface) 88%, transparent);
@@ -1377,6 +1426,13 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
   .tab[aria-selected="true"] svg { stroke-width: 2.1; }
   .tab[aria-selected="true"] span { font-weight: 500; }
 
+  @media (max-width: 360px) {
+    .tabbar { padding-left: 3px; padding-right: 3px; gap: 0; }
+    .tab { padding-left: 0; padding-right: 0; }
+    .tab span { font-size: 10px; }
+    .tab svg { width: 20px; height: 20px; }
+  }
+
   .tab-dot {
     position: absolute;
     top: 6px;
@@ -1388,6 +1444,7 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
 
   /* 分頁切換：只顯示目前這一頁的區塊 */
   body[data-view="today"]    [data-group]:not([data-group~="today"]),
+  body[data-view="focus"]    [data-group]:not([data-group~="focus"]),
   body[data-view="stats"]    [data-group]:not([data-group~="stats"]),
   body[data-view="mistakes"] [data-group]:not([data-group~="mistakes"]),
   body[data-view="rewards"]  [data-group]:not([data-group~="rewards"]),
