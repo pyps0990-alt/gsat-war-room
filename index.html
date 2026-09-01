@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=19">
+<link rel="stylesheet" href="./styles.css?v=20">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -317,6 +317,35 @@
       </form>
       <ul class="reward-list" id="rewardList"></ul>
       <p class="empty" id="rewardEmpty">還沒有獎勵。先想好一個真的會讓你想爬起來讀書的東西。</p>
+    </section>
+
+    <!-- 重要日程 -->
+    <section class="card card-agenda span-2" data-group="today" aria-labelledby="agTitle">
+      <div class="card-head">
+        <h2 id="agTitle">重要日程</h2>
+        <span class="muted" id="agendaNext"></span>
+      </div>
+
+      <form class="agenda-form" id="agendaForm">
+        <input type="text" id="agName" placeholder="事件名稱，例如：第二次模擬考" aria-label="事件名稱" required maxlength="30">
+        <div class="agenda-row2">
+          <input type="date" id="agDate" aria-label="日期" required>
+          <select id="agKind" aria-label="類別"></select>
+          <button class="btn btn-ghost btn-sm" type="submit">新增</button>
+        </div>
+      </form>
+
+      <ul class="agenda-list" id="agendaList"></ul>
+      <p class="empty" id="agendaEmpty">還沒有日程。把模擬考、報名截止、成績公布這些日期記下來，就不會漏掉。</p>
+
+      <details class="exam-plan">
+        <summary>學測考程表</summary>
+        <div class="plan-note">
+          <p>各節次的正式日期與時間請以<strong>大考中心公告</strong>為準。下方按鈕只會帶入慣例的考科順序，時間需要你自己填。</p>
+          <button class="btn btn-ghost btn-sm" type="button" id="planSeed">帶入考科順序</button>
+        </div>
+        <div class="plan-days" id="planDays"></div>
+      </details>
     </section>
 
     <!-- 每日金句 -->
@@ -630,8 +659,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=19"></script>
-<script src="./google.js?v=19"></script>
-<script type="module" src="./firebase.js?v=19"></script>
+<script src="./app.js?v=20"></script>
+<script src="./google.js?v=20"></script>
+<script type="module" src="./firebase.js?v=20"></script>
 </body>
 </html>

@@ -133,6 +133,8 @@
     music: { source: 'ambient', ambient: 'rain', volume: 45, ytUrl: '', ytTitle: '', linkPomo: true, playing: false },
     pomo: null,               // { mode, endsAt, remaining, cycles, day }
     exams: [],                // 模擬考成績
+    events: [],               // 重要日程
+    examPlan: [],             // 學測考程表
     updatedAt: new Date().toISOString()
   });
 
@@ -772,6 +774,124 @@
     });
   }
 
+  /* ---------- 重要日程 ---------- */
+  const AGENDA_KINDS = ['考試', '報名', '成績', '其他'];
+
+  /* 學測慣例的考科順序。日期與時間一律留白，
+     因為正式時程要看大考中心公告，不該由程式猜。 */
+  const EXAM_PLAN_SEED = [
+    { day: 1, subject: '國文（選擇題）', time: '' },
+    { day: 1, subject: '英文', time: '' },
+    { day: 1, subject: '數學A', time: '' },
+    { day: 2, subject: '社會', time: '' },
+    { day: 2, subject: '自然', time: '' },
+    { day: 2, subject: '國語文寫作能力測驗', time: '' }
+  ];
+
+  function renderAgenda() {
+    const list = store.data.events.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const t = today();
+    const upcoming = list.filter((e) => e.date >= t);
+
+    $('#agendaEmpty').hidden = list.length > 0;
+    $('#agendaNext').textContent = upcoming.length
+      ? `下一個：${upcoming[0].name}　${daysBetween(t, upcoming[0].date)} 天`
+      : '';
+
+    $('#agendaList').innerHTML = list.map((e) => {
+      const d = daysBetween(t, e.date);
+      const past = d < 0;
+      const label = past ? '已過' : d === 0 ? '就是今天' : `還有 ${d} 天`;
+      return `
+        <li class="agenda-item ${past ? 'is-past' : ''} ${d === 0 ? 'is-today' : ''}">
+          <span class="ag-kind ag-${esc(e.kind)}">${esc(e.kind)}</span>
+          <span class="ag-body">
+            <span class="ag-name">${esc(e.name)}</span>
+            <span class="ag-date">${fmtDate(e.date)}</span>
+          </span>
+          <span class="ag-left">${label}</span>
+          <button class="mi-del" type="button" data-ag-del="${e.id}" aria-label="刪除「${esc(e.name)}」">✕</button>
+        </li>`;
+    }).join('');
+  }
+
+  function renderPlan() {
+    const plan = store.data.examPlan;
+    $('#planDays').innerHTML = [1, 2].map((day) => {
+      const rows = plan.filter((r) => r.day === day);
+      return `
+        <div class="plan-day">
+          <h3 class="plan-h">第 ${day} 天</h3>
+          ${rows.length ? `<ul class="plan-rows">${rows.map((r) => `
+            <li class="plan-row">
+              <input type="text" class="plan-subject" data-plan="${r.id}" data-field="subject"
+                     value="${esc(r.subject)}" maxlength="20" aria-label="科目">
+              <input type="text" class="plan-time" data-plan="${r.id}" data-field="time"
+                     value="${esc(r.time)}" placeholder="時間" maxlength="20" aria-label="時間">
+              <button class="mi-del" type="button" data-plan-del="${r.id}" aria-label="刪除這一節">✕</button>
+            </li>`).join('')}</ul>` : '<p class="plan-empty">還沒有節次</p>'}
+          <button class="link-btn" type="button" data-plan-add="${day}">＋ 加一節</button>
+        </div>`;
+    }).join('');
+  }
+
+  function bindAgenda() {
+    $('#agKind').innerHTML = AGENDA_KINDS.map((k) => `<option>${k}</option>`).join('');
+
+    $('#agendaForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#agName').value.trim();
+      const date = $('#agDate').value;
+      if (!name || !date) return;
+      store.data.events.push({ id: uid(), name, date, kind: $('#agKind').value });
+      $('#agendaForm').reset();
+      save();
+      toast(`已加入「${name}」`);
+    });
+
+    $('#agendaList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ag-del]');
+      if (!b) return;
+      const ev = store.data.events.find((x) => x.id === b.dataset.agDel);
+      if (ev && confirm(`刪除「${ev.name}」？`)) {
+        store.data.events = store.data.events.filter((x) => x.id !== ev.id);
+        save();
+      }
+    });
+
+    $('#planSeed').addEventListener('click', () => {
+      if (store.data.examPlan.length &&
+          !confirm('這會覆蓋目前的考程表內容，確定嗎？')) return;
+      store.data.examPlan = EXAM_PLAN_SEED.map((r) => ({ ...r, id: uid() }));
+      save();
+      renderPlan();
+      toast('已帶入考科順序，時間請依大考中心公告填寫。');
+    });
+
+    $('#planDays').addEventListener('input', (e) => {
+      const el = e.target.closest('[data-plan]');
+      if (!el) return;
+      const row = store.data.examPlan.find((r) => r.id === el.dataset.plan);
+      if (row) { row[el.dataset.field] = el.value; store.save(); }
+    });
+
+    $('#planDays').addEventListener('click', (e) => {
+      const add = e.target.closest('[data-plan-add]');
+      const del = e.target.closest('[data-plan-del]');
+      if (add) {
+        store.data.examPlan.push({ id: uid(), day: Number(add.dataset.planAdd), subject: '', time: '' });
+        save();
+        renderPlan();
+      } else if (del) {
+        store.data.examPlan = store.data.examPlan.filter((r) => r.id !== del.dataset.planDel);
+        save();
+        renderPlan();
+      }
+    });
+
+    renderPlan();
+  }
+
   /* ---------- 弱點分析 ---------- */
   function renderWeak() {
     const ms = store.data.mistakes;
@@ -823,6 +943,7 @@
     renderSubjects();
     renderExams();
     renderWeak();
+    renderAgenda();
     if ($('#pomoRing')) renderPomo();
     renderRewards();
     renderMistakes();
@@ -2318,6 +2439,7 @@
     bindChart();
     bindRewards();
     bindExams();
+    bindAgenda();
     bindMistakes();
     bindCertificate();
     bindEditDialog();
