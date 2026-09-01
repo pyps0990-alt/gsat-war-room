@@ -429,6 +429,61 @@ input, select, textarea { font: inherit; color: inherit; }
 .card-pomo .hint { margin-top: auto; }
 @media (max-width: 640px) { .pomo-actions .btn { flex: 1; } }
 
+/* ---------- 專注音樂 ---------- */
+.music-pane { margin-bottom: 16px; }
+
+.yt-form { display: flex; gap: 9px; margin-bottom: 12px; }
+.yt-form input { flex: 1; min-width: 0; }
+.yt-form .btn { flex-shrink: 0; }
+.yt-wrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-m);
+  overflow: hidden;
+  background: var(--surface-2);
+  margin-bottom: 10px;
+}
+.yt-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.music-controls {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.music-controls .btn { flex-shrink: 0; }
+.vol { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 150px; }
+.vol span { font-size: 13px; color: var(--text-2); flex-shrink: 0; }
+
+input[type="range"] {
+  flex: 1; min-width: 0;
+  -webkit-appearance: none; appearance: none;
+  height: 5px; border-radius: 99px;
+  background: var(--surface-2);
+  outline-offset: 6px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--surface);
+  box-shadow: var(--shadow-s);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--surface);
+  cursor: pointer;
+}
+
+.music-link {
+  display: flex; align-items: center; gap: 9px;
+  margin-top: 14px;
+  font-size: 13.5px; color: var(--text-2);
+  cursor: pointer;
+}
+.music-link input { width: 17px; height: 17px; accent-color: var(--primary); flex-shrink: 0; }
+
 /* ---------- 連續天數 / 點數 ---------- */
 .streak-num, .points-num {
   font-family: var(--serif);

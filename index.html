@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=15">
+<link rel="stylesheet" href="./styles.css?v=16">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -139,6 +139,43 @@
         <button class="btn btn-ghost btn-sm" type="button" id="pomoSkip">跳過</button>
       </div>
       <p class="hint" id="pomoHint">專注 25 分鐘，結束後自動加進上方選定科目的時數。</p>
+    </section>
+
+    <!-- 專注音樂 -->
+    <section class="card card-music span-2" data-group="today" aria-labelledby="muTitle">
+      <div class="card-head">
+        <h2 id="muTitle">專注音樂</h2>
+        <div class="chart-toggle" role="group" aria-label="音源">
+          <button class="seg-btn" type="button" data-msrc="ambient" aria-pressed="true">環境音</button>
+          <button class="seg-btn" type="button" data-msrc="youtube" aria-pressed="false">YouTube</button>
+        </div>
+      </div>
+
+      <div class="music-pane" id="ambientPane">
+        <div class="chips" id="ambientList" role="group" aria-label="環境音選擇"></div>
+      </div>
+
+      <div class="music-pane" id="youtubePane" hidden>
+        <form class="yt-form" id="ytForm">
+          <input type="url" id="ytUrl" placeholder="貼上 YouTube 影片或播放清單網址" aria-label="YouTube 網址">
+          <button class="btn btn-ghost btn-sm" type="submit">載入</button>
+        </form>
+        <div class="yt-wrap" id="ytWrap" hidden></div>
+        <p class="hint" id="ytHint">手機上第一次要自己按一下播放，之後番茄鐘就能自動控制。</p>
+      </div>
+
+      <div class="music-controls">
+        <button class="btn btn-primary btn-sm" type="button" id="musicToggle">播放</button>
+        <label class="vol">
+          <span>音量</span>
+          <input type="range" id="musicVol" min="0" max="100" step="1" value="45" aria-label="音量">
+        </label>
+      </div>
+
+      <label class="music-link">
+        <input type="checkbox" id="musicLinkPomo" checked>
+        <span>跟著番茄鐘自動播放與暫停</span>
+      </label>
     </section>
 
     <!-- 連續天數 -->
@@ -559,8 +596,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=15"></script>
-<script src="./google.js?v=15"></script>
-<script type="module" src="./firebase.js?v=15"></script>
+<script src="./app.js?v=16"></script>
+<script src="./google.js?v=16"></script>
+<script type="module" src="./firebase.js?v=16"></script>
 </body>
 </html>

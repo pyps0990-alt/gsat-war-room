@@ -110,6 +110,7 @@
     quoteOffset: 0,
     zoom: 1,
     subject: '國文',          // 目前正在讀的科目
+    music: { source: 'ambient', ambient: 'rain', volume: 45, ytUrl: '', linkPomo: true, playing: false },
     pomo: null,               // { mode, endsAt, remaining, cycles, day }
     exams: [],                // 模擬考成績
     updatedAt: new Date().toISOString()
@@ -124,6 +125,9 @@
       } catch (e) {
         console.warn('讀取本機資料失敗，改用預設值', e);
       }
+      // 瀏覽器不允許載入後自動播放，所以播放狀態不該沿用上次的值，
+      // 否則按鈕會顯示「暫停」但其實沒有聲音
+      if (this.data.music) this.data.music.playing = false;
       return this.data;
     },
     save() {
@@ -1737,6 +1741,7 @@
       p.cycles += 1;
       addHours(round1(POMO.focus / 60));       // 25 分 → 0.4 小時（四捨五入到 0.1）
       p.mode = (p.cycles % POMO.longEvery === 0) ? 'long' : 'short';
+      musicOnPomo('pause');
       toast(`第 ${p.cycles} 顆番茄完成，已加 ${round1(POMO.focus / 60)} 小時到「${store.data.subject}」`);
     } else {
       p.mode = 'focus';
@@ -1754,8 +1759,10 @@
       if (p.endsAt) {                       // 暫停
         p.remaining = pomoLeft(p);
         p.endsAt = null;
+        musicOnPomo('pause');
       } else {                              // 開始／繼續
         p.endsAt = Date.now() + (p.remaining || pomoTotal(p));
+        if (p.mode === 'focus') musicOnPomo('focus');
       }
       store.save();
       renderPomo();
@@ -1763,6 +1770,7 @@
 
     $('#pomoReset').addEventListener('click', () => {
       const p = pomoState();
+      if (p.endsAt) musicOnPomo('pause');
       p.endsAt = null;
       p.remaining = pomoTotal(p);
       store.save();
@@ -1781,6 +1789,261 @@
 
     pomoTimer = setInterval(pomoTick, 500);
     renderPomo();
+  }
+
+  /* ============================================================
+     專注音樂：環境音用 Web Audio 即時合成（免檔案、可離線），
+     或嵌入 YouTube。兩者都能跟番茄鐘連動。
+     ============================================================ */
+  const AMBIENTS = {
+    rain:  { name: '雨聲',   type: 'bandpass', freq: 1400, q: 0.6, lfo: 0.18, depth: 0.28, gain: 0.55 },
+    waves: { name: '海浪',   type: 'lowpass',  freq: 520,  q: 0.8, lfo: 0.09, depth: 0.62, gain: 0.75, brown: true },
+    fan:   { name: '風扇',   type: 'lowpass',  freq: 320,  q: 0.5, lfo: 0.5,  depth: 0.06, gain: 0.8,  brown: true },
+    stream:{ name: '溪流',   type: 'highpass', freq: 900,  q: 0.7, lfo: 0.32, depth: 0.2,  gain: 0.4 },
+    white: { name: '白噪音', type: 'lowpass',  freq: 8000, q: 0.4, lfo: 0,    depth: 0,    gain: 0.35 }
+  };
+
+  const music = {
+    ctx: null, src: null, filter: null, lfo: null, lfoGain: null, gain: null,
+    playing: false, pausedByPomo: false,
+
+    /* 4 秒的噪音緩衝，循環播放聽不出接縫 */
+    buildNoise(brown) {
+      const len = this.ctx.sampleRate * 4;
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      if (brown) {
+        let last = 0;
+        for (let i = 0; i < len; i++) {
+          const w = Math.random() * 2 - 1;
+          last = (last + 0.02 * w) / 1.02;
+          d[i] = last * 3.5;
+        }
+      } else {
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
+      // 頭尾各做一小段淡入淡出，避免循環時的爆音
+      const fade = Math.floor(this.ctx.sampleRate * 0.05);
+      for (let i = 0; i < fade; i++) {
+        d[i] *= i / fade;
+        d[len - 1 - i] *= i / fade;
+      }
+      return buf;
+    },
+
+    start() {
+      const preset = AMBIENTS[store.data.music.ambient] || AMBIENTS.rain;
+      this.stopNodes();
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+
+      this.src = this.ctx.createBufferSource();
+      this.src.buffer = this.buildNoise(preset.brown);
+      this.src.loop = true;
+
+      this.filter = this.ctx.createBiquadFilter();
+      this.filter.type = preset.type;
+      this.filter.frequency.value = preset.freq;
+      this.filter.Q.value = preset.q;
+
+      this.gain = this.ctx.createGain();
+      this.gain.gain.value = 0;
+
+      this.src.connect(this.filter).connect(this.gain).connect(this.ctx.destination);
+
+      // 緩慢起伏，聽起來才不像單調的嘶聲
+      if (preset.lfo > 0) {
+        this.lfo = this.ctx.createOscillator();
+        this.lfo.frequency.value = preset.lfo;
+        this.lfoGain = this.ctx.createGain();
+        this.lfoGain.gain.value = preset.depth * preset.gain;
+        this.lfo.connect(this.lfoGain).connect(this.gain.gain);
+        this.lfo.start();
+      }
+
+      this.src.start();
+      this.fadeTo(this.targetGain(preset), 0.8);
+      this.playing = true;
+    },
+
+    targetGain(preset) {
+      const p = preset || AMBIENTS[store.data.music.ambient] || AMBIENTS.rain;
+      return (store.data.music.volume / 100) * p.gain;
+    },
+
+    fadeTo(v, sec) {
+      if (!this.gain) return;
+      const t = this.ctx.currentTime;
+      this.gain.gain.cancelScheduledValues(t);
+      this.gain.gain.setValueAtTime(Math.max(0.0001, this.gain.gain.value), t);
+      this.gain.gain.linearRampToValueAtTime(Math.max(0.0001, v), t + sec);
+    },
+
+    stopNodes() {
+      try { this.lfo?.stop(); } catch { /* 已停止 */ }
+      try { this.src?.stop(); } catch { /* 已停止 */ }
+      this.lfo = this.src = this.filter = this.gain = this.lfoGain = null;
+    },
+
+    stop() {
+      if (this.gain) {
+        this.fadeTo(0, 0.4);
+        const nodes = { src: this.src, lfo: this.lfo };
+        setTimeout(() => {
+          try { nodes.lfo?.stop(); } catch { /* ignore */ }
+          try { nodes.src?.stop(); } catch { /* ignore */ }
+        }, 500);
+        this.lfo = this.src = this.filter = this.gain = this.lfoGain = null;
+      } else {
+        this.stopNodes();
+      }
+      this.playing = false;
+    },
+
+    setVolume() {
+      if (this.playing && this.gain) this.fadeTo(this.targetGain(), 0.2);
+    }
+  };
+
+  /* ---------- YouTube ---------- */
+  function ytEmbedUrl(raw) {
+    let u;
+    try { u = new URL(raw.trim()); } catch { return null; }
+    const host = u.hostname.replace(/^www\./, '');
+    const base = 'https://www.youtube-nocookie.com/embed/';
+    const common = 'enablejsapi=1&rel=0&playsinline=1';
+
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1);
+      return id ? `${base}${id}?${common}` : null;
+    }
+    if (!host.endsWith('youtube.com')) return null;
+
+    const list = u.searchParams.get('list');
+    const v = u.searchParams.get('v');
+    if (v) return `${base}${v}?${common}${list ? '&list=' + list : ''}`;
+    if (list) return `${base}videoseries?${common}&list=${list}`;
+    if (u.pathname.startsWith('/embed/')) return `${base}${u.pathname.slice(7)}?${common}`;
+    return null;
+  }
+
+  const ytFrame = () => $('#ytWrap iframe');
+
+  function ytCommand(func) {
+    const f = ytFrame();
+    if (!f?.contentWindow) return;
+    try {
+      f.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*');
+    } catch { /* 跨來源受限就算了 */ }
+  }
+
+  function loadYt(url, autoplay) {
+    const embed = ytEmbedUrl(url);
+    if (!embed) { toast('這個網址看起來不是 YouTube 影片或播放清單。'); return false; }
+    $('#ytWrap').hidden = false;
+    $('#ytWrap').innerHTML =
+      `<iframe src="${embed}${autoplay ? '&autoplay=1' : ''}" title="專注音樂"
+        allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    return true;
+  }
+
+  /* ---------- 統一的播放控制 ---------- */
+  const musicIsYt = () => store.data.music.source === 'youtube';
+
+  function musicPlay() {
+    if (musicIsYt()) {
+      if (!ytFrame()) {
+        if (!store.data.music.ytUrl || !loadYt(store.data.music.ytUrl, true)) return;
+      } else ytCommand('playVideo');
+    } else {
+      music.start();
+    }
+    store.data.music.playing = true;
+    renderMusic();
+  }
+
+  function musicPause() {
+    if (musicIsYt()) ytCommand('pauseVideo');
+    else music.stop();
+    store.data.music.playing = false;
+    renderMusic();
+  }
+
+  /* 番茄鐘連動 */
+  function musicOnPomo(action) {
+    if (!store.data.music.linkPomo) return;
+    if (action === 'focus') {
+      musicPlay();
+      music.pausedByPomo = false;
+    } else if (store.data.music.playing) {
+      musicPause();
+      music.pausedByPomo = true;
+    }
+  }
+
+  function renderMusic() {
+    const m = store.data.music;
+    $$('.card-music .seg-btn').forEach((b) =>
+      b.setAttribute('aria-pressed', String(b.dataset.msrc === m.source)));
+    $('#ambientPane').hidden = m.source !== 'ambient';
+    $('#youtubePane').hidden = m.source !== 'youtube';
+
+    $('#ambientList').innerHTML = Object.entries(AMBIENTS).map(([k, v]) =>
+      `<button class="chip" type="button" data-ambient="${k}" aria-pressed="${k === m.ambient}">${v.name}</button>`).join('');
+
+    $('#musicToggle').textContent = m.playing ? '暫停' : '播放';
+    $('#musicToggle').setAttribute('aria-pressed', String(!!m.playing));
+    $('#musicVol').value = m.volume;
+    $('#musicLinkPomo').checked = !!m.linkPomo;
+  }
+
+  function bindMusic() {
+    renderMusic();
+
+    $$('.card-music .seg-btn').forEach((b) => b.addEventListener('click', () => {
+      if (store.data.music.playing) musicPause();
+      store.data.music.source = b.dataset.msrc;
+      store.save();
+      renderMusic();
+    }));
+
+    $('#ambientList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ambient]');
+      if (!b) return;
+      store.data.music.ambient = b.dataset.ambient;
+      store.save();
+      renderMusic();
+      if (store.data.music.playing) music.start();   // 立刻換成新的音色
+    });
+
+    $('#musicToggle').addEventListener('click', () => {
+      store.data.music.playing ? musicPause() : musicPlay();
+    });
+
+    $('#musicVol').addEventListener('input', (e) => {
+      store.data.music.volume = Number(e.target.value);
+      music.setVolume();
+    });
+    $('#musicVol').addEventListener('change', () => store.save());
+
+    $('#musicLinkPomo').addEventListener('change', (e) => {
+      store.data.music.linkPomo = e.target.checked;
+      store.save();
+    });
+
+    $('#ytForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = $('#ytUrl').value.trim();
+      if (!url) return;
+      if (loadYt(url, false)) {
+        store.data.music.ytUrl = url;
+        store.save();
+        toast('已載入。按播放鍵開始。');
+      }
+    });
+
+    if (store.data.music.ytUrl) $('#ytUrl').value = store.data.music.ytUrl;
   }
 
   /* 打卡項目編輯 */
@@ -1934,6 +2197,7 @@
     bindDialogs();
     bindBackup();
     bindTaskEditor();
+    bindMusic();
     bindPomo();
     bindZoom();
     bindTabs();
