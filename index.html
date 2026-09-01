@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=16">
+<link rel="stylesheet" href="./styles.css?v=18">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -156,12 +156,30 @@
       </div>
 
       <div class="music-pane" id="youtubePane" hidden>
-        <form class="yt-form" id="ytForm">
-          <input type="url" id="ytUrl" placeholder="貼上 YouTube 影片或播放清單網址" aria-label="YouTube 網址">
-          <button class="btn btn-ghost btn-sm" type="submit">載入</button>
+        <form class="yt-search" id="ytSearchForm">
+          <input type="search" id="ytQuery" placeholder="搜尋歌曲、演奏、lo-fi…" aria-label="搜尋 YouTube 音樂">
+          <button class="btn btn-primary btn-sm" type="submit" id="ytSearchBtn">搜尋</button>
         </form>
-        <div class="yt-wrap" id="ytWrap" hidden></div>
-        <p class="hint" id="ytHint">手機上第一次要自己按一下播放，之後番茄鐘就能自動控制。</p>
+
+        <div class="yt-presets" id="ytPresets" role="group" aria-label="快速搜尋"></div>
+
+        <ul class="yt-results" id="ytResults" hidden></ul>
+        <p class="yt-msg" id="ytMsg" hidden></p>
+
+        <div class="yt-player" id="ytPlayer" hidden>
+          <div class="yt-wrap" id="ytWrap"></div>
+          <p class="yt-now" id="ytNow"></p>
+        </div>
+
+        <details class="yt-manual">
+          <summary>或直接貼網址</summary>
+          <form class="yt-form" id="ytForm">
+            <input type="url" id="ytUrl" placeholder="YouTube 影片或播放清單網址" aria-label="YouTube 網址">
+            <button class="btn btn-ghost btn-sm" type="submit">載入</button>
+          </form>
+        </details>
+
+        <p class="hint">手機上第一次要自己按一下播放，之後番茄鐘就能自動控制。</p>
       </div>
 
       <div class="music-controls">
@@ -300,6 +318,10 @@
       <div class="quote-body">
         <p class="quote-text" id="quoteText">—</p>
         <p class="quote-source" id="quoteSource"></p>
+        <details class="quote-explain" id="quoteExplain" hidden>
+          <summary>看解釋</summary>
+          <p id="quoteExplainText"></p>
+        </details>
       </div>
       <button class="btn btn-ghost btn-sm quote-refresh" type="button" id="quoteNext">換一句</button>
     </section>
@@ -596,8 +618,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="./app.js?v=16"></script>
-<script src="./google.js?v=16"></script>
-<script type="module" src="./firebase.js?v=16"></script>
+<script src="./app.js?v=18"></script>
+<script src="./google.js?v=18"></script>
+<script type="module" src="./firebase.js?v=18"></script>
 </body>
 </html>

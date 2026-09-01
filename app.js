@@ -36,36 +36,56 @@
   /* ---------- 每日金句 ----------
      古語出自公共領域典籍；未標出處者為本站自撰。 */
   const QUOTES = [
-    ['不積跬步，無以至千里；不積小流，無以成江海。', '荀子・勸學'],
-    ['鍥而不捨，金石可鏤。', '荀子・勸學'],
-    ['學而不思則罔，思而不學則殆。', '論語・為政'],
-    ['知之者不如好之者，好之者不如樂之者。', '論語・雍也'],
-    ['譬如為山，未成一簣，止，吾止也。', '論語・子罕'],
-    ['天行健，君子以自強不息。', '易經・乾卦'],
-    ['千里之行，始於足下。', '老子・道德經'],
-    ['合抱之木，生於毫末；九層之臺，起於累土。', '老子・道德經'],
-    ['業精於勤，荒於嬉；行成於思，毀於隨。', '韓愈・進學解'],
-    ['讀書之法，在循序而漸進，熟讀而精思。', '朱熹'],
-    ['寶劍鋒從磨礪出，梅花香自苦寒來。', '警世賢文'],
-    ['書山有路勤為徑，學海無涯苦作舟。', '古訓'],
-    ['少壯不努力，老大徒傷悲。', '樂府詩集・長歌行'],
-    ['盛年不重來，一日難再晨。', '陶淵明'],
-    ['駑馬十駕，功在不舍。', '荀子・勸學'],
-    ['博學之，審問之，慎思之，明辨之，篤行之。', '中庸'],
-    ['士不可以不弘毅，任重而道遠。', '論語・泰伯'],
-    ['行百里者半九十。', '戰國策'],
-    ['問渠那得清如許，為有源頭活水來。', '朱熹・觀書有感'],
-    ['紙上得來終覺淺，絕知此事要躬行。', '陸游・冬夜讀書示子聿'],
-    ['今天不必是完美的一天，只要是有推進的一天。', ''],
-    ['進度落後不是失敗，停下來才是。', ''],
-    ['你不需要每天都想讀書，只需要每天都去讀。', ''],
-    ['錯題訂正一題，勝過新題亂寫十題。', ''],
-    ['焦慮是正常的。把它拆成今天的一格進度條。', ''],
-    ['最難的部分不是讀懂，是坐下來開始。', ''],
-    ['狀態差的日子讀三十分鐘，也比零強。', ''],
-    ['你現在覺得慢，是因為你正在走真正有用的路。', ''],
-    ['考卷不會問你今天心情好不好，只問你會不會。', ''],
-    ['三個月後的你，會感謝今天沒有放棄的自己。', '']
+    ['不積跬步，無以至千里；不積小流，無以成江海。', '荀子・勸學',
+     '跬步是抬一次腳的距離。不累積這種小到不起眼的步伐，就走不到千里之外。荀子講的是「積」——成果從來不是一次到位，是小量反覆疊出來的。'],
+    ['鍥而不捨，金石可鏤。', '荀子・勸學',
+     '鍥是刻、鏤是雕穿。一直刻下去，連金屬和石頭都能雕透。前一句是「鍥而舍之，朽木不折」：中途放棄，連爛木頭都斷不了。差別不在材料，在有沒有停。'],
+    ['學而不思則罔，思而不學則殆。', '論語・為政',
+     '罔是迷惘，殆是危險。只接收不思考，學再多也是一團模糊；只空想不學習，想法沒有根據就很危險。這兩件事要一起做。'],
+    ['知之者不如好之者，好之者不如樂之者。', '論語・雍也',
+     '懂一件事，不如喜歡它；喜歡它，不如樂在其中。孔子講的是動力的三個層次——靠意志力撐最累，樂在其中才走得遠。'],
+    ['譬如為山，未成一簣，止，吾止也。', '論語・子罕',
+     '簣是裝土的竹筐。堆一座山只差最後一筐土卻停手，山就是沒堆成——而且是自己選擇停的。孔子強調責任在自己，不在條件。'],
+    ['天行健，君子以自強不息。', '易經・乾卦',
+     '天體運行剛健不休，君子效法它，不斷自我砥礪、不停歇。重點是「不息」——靠的是恆常的節奏，不是偶爾的爆發。'],
+    ['千里之行，始於足下。', '老子・道德經',
+     '再遠的路也是從腳下這一步開始。老子的原意帶點提醒：與其被整段路的長度嚇住，不如專注在能踏出的這一步。'],
+    ['合抱之木，生於毫末；九層之臺，起於累土。', '老子・道德經',
+     '要兩手才抱得住的大樹，是從細芽長起來的；九層高臺是一畚箕土堆起來的。跟上一句同一個道理，但更強調起點的微不足道。'],
+    ['業精於勤，荒於嬉；行成於思，毀於隨。', '韓愈・進學解',
+     '學業因勤奮而精進，因玩樂而荒廢；德行因思考而成就，因隨便而毀壞。隨是「隨波逐流」——不是做壞事，是沒有主見地跟著走。'],
+    ['讀書之法，在循序而漸進，熟讀而精思。', '朱熹',
+     '照順序來、不要跳；讀熟之後還要深入想。朱熹反對囫圇吞棗式的求快，主張慢讀但讀透。'],
+    ['寶劍鋒從磨礪出，梅花香自苦寒來。', '警世賢文',
+     '劍要磨才鋒利，梅花要熬過嚴冬才香。兩個比喻講同一件事：好東西都要經過難受的過程，不舒服本身就是過程的一部分。'],
+    ['書山有路勤為徑，學海無涯苦作舟。', '古訓',
+     '知識像山，勤奮是上山的路；學問像海，肯吃苦是渡海的船。「無涯」是老實話——學問學不完，所以重點不是學完，是持續前進。'],
+    ['少壯不努力，老大徒傷悲。', '樂府詩集・長歌行',
+     '年輕時不努力，老了只能白白難過。「徒」是白白地——強調那時候的懊悔完全沒有用，因為時間已經換不回來。'],
+    ['盛年不重來，一日難再晨。', '陶淵明',
+     '最好的年紀不會重來，一天也不會有第二個早晨。下兩句是「及時當勉勵，歲月不待人」，意思是把握當下。'],
+    ['駑馬十駕，功在不舍。', '荀子・勸學',
+     '駑馬是跑不快的馬。牠拉車走十天，也能到達好馬一天的距離——關鍵在不停下來。荀子刻意用最不佔優勢的馬舉例。'],
+    ['博學之，審問之，慎思之，明辨之，篤行之。', '中庸',
+     '廣泛地學、仔細地問、謹慎地想、清楚地分辨、確實地做。五個步驟是有順序的，缺了最後的「行」，前面四步都只停在腦袋裡。'],
+    ['士不可以不弘毅，任重而道遠。', '論語・泰伯',
+     '弘是氣度寬廣，毅是意志堅定。責任重、路途遠，所以這兩樣都不能少——只有毅力會撐得很苦，只有氣度會走不遠。'],
+    ['行百里者半九十。', '戰國策',
+     '走一百里路，走到九十里才算走了一半。愈接近終點愈難撐，所以最後那段要當成還有一半的路來準備。'],
+    ['問渠那得清如許，為有源頭活水來。', '朱熹・觀書有感',
+     '問那池水為什麼這麼清澈？因為源頭有活水不斷流進來。朱熹用池塘比喻讀書——腦袋要保持清明，就得持續有新的東西進來。'],
+    ['紙上得來終覺淺，絕知此事要躬行。', '陸游・冬夜讀書示子聿',
+     '從書上讀來的終究是淺的，要真正弄懂就得親自去做。放到考試上就是：看懂詳解不等於會，動手寫過才算。'],
+    ['今天不必是完美的一天，只要是有推進的一天。', '', ''],
+    ['進度落後不是失敗，停下來才是。', '', ''],
+    ['你不需要每天都想讀書，只需要每天都去讀。', '', ''],
+    ['錯題訂正一題，勝過新題亂寫十題。', '', ''],
+    ['焦慮是正常的。把它拆成今天的一格進度條。', '', ''],
+    ['最難的部分不是讀懂，是坐下來開始。', '', ''],
+    ['狀態差的日子讀三十分鐘，也比零強。', '', ''],
+    ['你現在覺得慢，是因為你正在走真正有用的路。', '', ''],
+    ['考卷不會問你今天心情好不好，只問你會不會。', '', ''],
+    ['三個月後的你，會感謝今天沒有放棄的自己。', '', '']
   ];
 
   const quoteOfDay = (offset = 0) => {
@@ -110,7 +130,7 @@
     quoteOffset: 0,
     zoom: 1,
     subject: '國文',          // 目前正在讀的科目
-    music: { source: 'ambient', ambient: 'rain', volume: 45, ytUrl: '', linkPomo: true, playing: false },
+    music: { source: 'ambient', ambient: 'rain', volume: 45, ytUrl: '', ytTitle: '', linkPomo: true, playing: false },
     pomo: null,               // { mode, endsAt, remaining, cycles, day }
     exams: [],                // 模擬考成績
     updatedAt: new Date().toISOString()
@@ -782,9 +802,13 @@
   }
 
   function renderQuote() {
-    const [text, source] = quoteOfDay(store.data.quoteOffset || 0);
+    const [text, source, explain] = quoteOfDay(store.data.quoteOffset || 0);
     $('#quoteText').textContent = `「${text}」`;
     $('#quoteSource').textContent = source ? `— ${source}` : '';
+    // 文言文才有解釋；白話的句子不需要
+    $('#quoteExplain').hidden = !explain;
+    $('#quoteExplain').open = false;
+    $('#quoteExplainText').textContent = explain || '';
   }
 
   function renderAll() {
@@ -1937,15 +1961,68 @@
     } catch { /* 跨來源受限就算了 */ }
   }
 
-  function loadYt(url, autoplay) {
+  function loadYt(url, autoplay, title) {
     const embed = ytEmbedUrl(url);
     if (!embed) { toast('這個網址看起來不是 YouTube 影片或播放清單。'); return false; }
-    $('#ytWrap').hidden = false;
+    $('#ytPlayer').hidden = false;
     $('#ytWrap').innerHTML =
       `<iframe src="${embed}${autoplay ? '&autoplay=1' : ''}" title="專注音樂"
         allow="autoplay; encrypted-media" allowfullscreen loading="lazy"
         referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    if (title !== undefined) store.data.music.ytTitle = title;
+    $('#ytNow').textContent = store.data.music.ytTitle || '';
+    $('#ytNow').hidden = !store.data.music.ytTitle;
     return true;
+  }
+
+  /* ---------- YouTube 搜尋 ---------- */
+  const YT_PRESETS = ['lofi 讀書', '古典鋼琴 專注', '白噪音 咖啡廳', 'Ghibli 鋼琴', '無歌詞 純音樂'];
+
+  function renderYtResults(items) {
+    const list = $('#ytResults');
+    list.hidden = items.length === 0;
+    list.innerHTML = items.map((it) => `
+      <li>
+        <button class="yt-item" type="button" data-yt-id="${esc(it.id)}" data-yt-title="${esc(it.title)}">
+          <img src="${esc(it.thumb)}" alt="" loading="lazy">
+          <span class="yt-item-text">
+            <span class="yt-item-title">${esc(it.title)}</span>
+            <span class="yt-item-ch">${esc(it.channel)}</span>
+          </span>
+        </button>
+      </li>`).join('');
+  }
+
+  function ytMessage(msg) {
+    $('#ytMsg').hidden = !msg;
+    $('#ytMsg').textContent = msg || '';
+  }
+
+  async function ytSearch(q) {
+    const btn = $('#ytSearchBtn');
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = '搜尋中…';
+    ytMessage('');
+    try {
+      const res = await fetch('/api/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `伺服器回應 ${res.status}`);
+
+      renderYtResults(data.items || []);
+      if (!data.items?.length) ytMessage('找不到可以嵌入播放的結果，換個關鍵字試試。');
+    } catch (e) {
+      console.error(e);
+      $('#ytResults').hidden = true;
+      ytMessage(e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
   }
 
   /* ---------- 統一的播放控制 ---------- */
@@ -2036,14 +2113,48 @@
       e.preventDefault();
       const url = $('#ytUrl').value.trim();
       if (!url) return;
-      if (loadYt(url, false)) {
+      if (loadYt(url, false, '')) {
         store.data.music.ytUrl = url;
         store.save();
         toast('已載入。按播放鍵開始。');
       }
     });
 
-    if (store.data.music.ytUrl) $('#ytUrl').value = store.data.music.ytUrl;
+    // 搜尋
+    $('#ytPresets').innerHTML = YT_PRESETS
+      .map((p) => `<button class="chip" type="button" data-preset="${esc(p)}">${esc(p)}</button>`).join('');
+
+    $('#ytPresets').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-preset]');
+      if (!b) return;
+      $('#ytQuery').value = b.dataset.preset;
+      ytSearch(b.dataset.preset);
+    });
+
+    $('#ytSearchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = $('#ytQuery').value.trim();
+      if (q) ytSearch(q);
+    });
+
+    $('#ytResults').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-yt-id]');
+      if (!b) return;
+      const url = `https://www.youtube.com/watch?v=${b.dataset.ytId}`;
+      if (loadYt(url, true, b.dataset.ytTitle)) {
+        store.data.music.ytUrl = url;
+        store.data.music.playing = true;
+        store.save();
+        $('#ytResults').hidden = true;
+        renderMusic();
+      }
+    });
+
+    if (store.data.music.ytUrl) {
+      $('#ytUrl').value = store.data.music.ytUrl;
+      $('#ytNow').textContent = store.data.music.ytTitle || '';
+      $('#ytNow').hidden = !store.data.music.ytTitle;
+    }
   }
 
   /* 打卡項目編輯 */

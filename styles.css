@@ -432,18 +432,83 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ---------- 專注音樂 ---------- */
 .music-pane { margin-bottom: 16px; }
 
-.yt-form { display: flex; gap: 9px; margin-bottom: 12px; }
-.yt-form input { flex: 1; min-width: 0; }
-.yt-form .btn { flex-shrink: 0; }
+.yt-search { display: flex; gap: 9px; margin-bottom: 11px; }
+.yt-search input { flex: 1; min-width: 0; }
+.yt-search .btn { flex-shrink: 0; }
+
+.yt-presets { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.yt-results {
+  display: grid; gap: 7px;
+  margin-bottom: 14px;
+  max-height: 296px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.yt-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--bg);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s var(--ease), background-color .2s var(--ease), transform .15s var(--ease);
+}
+.yt-item:hover { border-color: var(--primary); background: var(--primary-soft); }
+.yt-item:active { transform: scale(.99); }
+.yt-item img {
+  width: 84px; height: 47px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.yt-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.yt-item-title {
+  font-size: 13.5px; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.yt-item-ch { font-size: 12px; color: var(--text-2); }
+
+.yt-msg {
+  font-size: 13px; color: var(--accent-ink);
+  padding: 11px 14px;
+  border-radius: var(--r-s);
+  background: var(--accent-soft);
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.yt-player { margin-bottom: 12px; }
 .yt-wrap {
   position: relative;
   aspect-ratio: 16 / 9;
   border-radius: var(--r-m);
   overflow: hidden;
   background: var(--surface-2);
-  margin-bottom: 10px;
+  border: 1px solid var(--border);
 }
 .yt-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.yt-now {
+  font-size: 13px; color: var(--text-2);
+  margin-top: 8px; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.yt-manual { margin-bottom: 10px; }
+.yt-manual summary {
+  font-size: 13px; color: var(--text-2);
+  cursor: pointer; padding: 5px 0; list-style: none;
+}
+.yt-manual summary::-webkit-details-marker { display: none; }
+.yt-manual summary::before { content: "▸ "; }
+.yt-manual[open] summary::before { content: "▾ "; }
+.yt-form { display: flex; gap: 9px; padding-top: 8px; }
+.yt-form input { flex: 1; min-width: 0; }
+.yt-form .btn { flex-shrink: 0; }
 
 .music-controls {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -665,6 +730,31 @@ input[type="range"]::-moz-range-thumb {
   word-break: break-word;
 }
 .quote-source { font-size: 13.5px; color: var(--text-2); margin-top: 10px; }
+
+.quote-explain { margin-top: 14px; }
+.quote-explain summary {
+  display: inline-block;
+  font-size: 12.5px;
+  color: var(--primary);
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  border-radius: 99px;
+  transition: background-color .2s var(--ease);
+}
+.quote-explain summary::-webkit-details-marker { display: none; }
+.quote-explain summary:hover { background: var(--primary-soft); }
+.quote-explain[open] summary { margin-bottom: 10px; }
+.quote-explain[open] summary::after { content: "　收起"; opacity: .6; }
+.quote-explain p {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--text-2);
+  padding-left: 13px;
+  border-left: 2px solid var(--border);
+}
 .quote-refresh { align-self: flex-start; margin-top: 18px; }
 @media (max-width: 640px) {
   .card-quote { padding: 24px 22px; }
@@ -818,7 +908,11 @@ input[type="range"]::-moz-range-thumb {
 
 .btn-sm { padding: 6px 14px; font-size: 13.5px; min-height: 36px; border-radius: 10px; }
 
-input[type="text"], input[type="number"], input[type="date"], input[type="email"], select {
+/* 一條規則涵蓋所有文字類輸入。漏掉 search／url 的話，
+   它們會套用瀏覽器預設樣式（直角、粗邊框），跟整體完全不搭。 */
+input[type="text"], input[type="number"], input[type="date"],
+input[type="email"], input[type="search"], input[type="url"],
+input[type="tel"], input[type="password"], select, textarea {
   width: 100%;
   min-width: 0;   /* 讓輸入框能縮到比固有最小寬更窄，避免撐爆格線／彈性容器 */
   padding: 11px 14px;
@@ -826,10 +920,38 @@ input[type="text"], input[type="number"], input[type="date"], input[type="email"
   border: 1px solid var(--border);
   border-radius: var(--r-m);
   background: var(--bg);
-  transition: border-color .25s var(--ease), background-color .25s var(--ease);
+  color: var(--text);
+  font: inherit;
+  -webkit-appearance: none;   /* 關掉 iOS 對 search 的原生外框與內凹樣式 */
+  appearance: none;
+  transition: border-color .25s var(--ease), background-color .25s var(--ease),
+              box-shadow .25s var(--ease);
 }
-input::placeholder { color: var(--text-2); opacity: .68; }
-input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+
+/* select 要留下箭頭，用背景圖畫一個，才不會因為 appearance:none 而消失 */
+select {
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23736E67' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 17px;
+}
+
+/* iOS 的搜尋框清除鈕與內距 */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+input::placeholder, textarea::placeholder { color: var(--text-2); opacity: .68; }
+
+input:hover, select:hover, textarea:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+/* 有了上面的聚焦樣式就不需要再疊一圈外框 */
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label, .field-label { font-size: 13px; color: var(--text-2); }
@@ -905,13 +1027,7 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
 .head-actions { display: flex; gap: 7px; flex-wrap: wrap; }
 
 .mk-tools { display: flex; gap: 9px; margin-bottom: 12px; }
-.mk-tools input[type="search"] {
-  flex: 1; min-width: 0;
-  width: 100%; padding: 11px 14px; min-height: 44px;
-  border: 1px solid var(--border); border-radius: var(--r-m);
-  background: var(--bg);
-  -webkit-appearance: none;
-}
+.mk-tools input[type="search"] { flex: 1; min-width: 0; }
 .mk-tools .btn { flex-shrink: 0; position: relative; }
 .filter-count {
   display: inline-grid; place-items: center;
@@ -948,17 +1064,7 @@ input:hover, select:hover { border-color: color-mix(in srgb, var(--primary) 40%,
 .mk-more-fields { display: grid; gap: 11px; padding-top: 8px; }
 @media (max-width: 640px) { .mk-more { grid-column: span 1; } }
 
-textarea {
-  width: 100%; min-width: 0;
-  padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-m);
-  background: var(--bg);
-  resize: vertical;
-  line-height: 1.65;
-  transition: border-color .25s var(--ease);
-}
-textarea:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+textarea { resize: vertical; line-height: 1.65; padding-top: 12px; }
 
 .mi-solution {
   margin-top: 9px;
