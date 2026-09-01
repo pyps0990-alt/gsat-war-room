@@ -150,6 +150,19 @@
       // 瀏覽器不允許載入後自動播放，所以播放狀態不該沿用上次的值，
       // 否則按鈕會顯示「暫停」但其實沒有聲音
       if (this.data.music) this.data.music.playing = false;
+
+      // 舊版考程表是一節一筆的平面陣列，新版改為每場考試含多天多節。
+      // 沒有 days 的舊資料留著會讓渲染爆掉，直接丟棄讓使用者重新帶入。
+      const plan = Array.isArray(this.data.examPlan) ? this.data.examPlan : [];
+      const migrated = plan.filter((x) => Array.isArray(x?.days));
+      if (migrated.length !== plan.length) {
+        this.data.examPlan = migrated;
+        this.save();          // 一併清掉本機的舊資料，避免每次載入都重跑
+      } else {
+        this.data.examPlan = migrated;
+      }
+      if (!Array.isArray(this.data.events)) this.data.events = [];
+
       return this.data;
     },
     save() {
@@ -777,16 +790,111 @@
   /* ---------- 重要日程 ---------- */
   const AGENDA_KINDS = ['考試', '報名', '成績', '其他'];
 
-  /* 學測慣例的考科順序。日期與時間一律留白，
-     因為正式時程要看大考中心公告，不該由程式猜。 */
-  const EXAM_PLAN_SEED = [
-    { day: 1, subject: '國文（選擇題）', time: '' },
-    { day: 1, subject: '英文', time: '' },
-    { day: 1, subject: '數學A', time: '' },
-    { day: 2, subject: '社會', time: '' },
-    { day: 2, subject: '自然', time: '' },
-    { day: 2, subject: '國語文寫作能力測驗', time: '' }
+  /* 以下取自內湖高中 115 學年度第 1 學期行事曆與模擬考日程表。
+     民國 115 年 8 月～12 月為西元 2026 年，隔年 1、2 月為 2027 年。 */
+  const SCHOOL_EVENTS = [
+    { name: '第一學期開學日', date: '2026-08-31', kind: '其他' },
+    { name: '高三第一次學測模擬考', date: '2026-09-02', kind: '考試' },
+    { name: '高三多元入學家長說明會', date: '2026-09-18', kind: '其他' },
+    { name: '全校第一次期中考', date: '2026-10-13', kind: '考試' },
+    { name: '高中英語聽力測驗（第一次）', date: '2026-10-17', kind: '考試' },
+    { name: '學測暨術科校內報名繳費開始', date: '2026-10-27', kind: '報名' },
+    { name: '高三第二次學測模擬考', date: '2026-10-28', kind: '考試' },
+    { name: '英聽（第二次）校內報名繳費', date: '2026-11-03', kind: '報名' },
+    { name: '全校第二次期中考', date: '2026-12-02', kind: '考試' },
+    { name: '高三第三次學測模擬考', date: '2026-12-08', kind: '考試' },
+    { name: '高三申請入學入班說明會', date: '2026-12-10', kind: '其他' },
+    { name: '高中英語聽力測驗（第二次）', date: '2026-12-12', kind: '考試' },
+    { name: '高三第八節課輔結束', date: '2026-12-24', kind: '其他' },
+    { name: '高三期末考', date: '2026-12-28', kind: '考試' },
+    { name: '休業式', date: '2027-01-20', kind: '其他' },
+    { name: '大學學科能力測驗', date: '2027-01-22', kind: '考試' },
+    { name: '大學術科考試（音樂組）', date: '2027-01-26', kind: '考試' },
+    { name: '大學術科考試（美術組）', date: '2027-01-29', kind: '考試' }
   ];
+
+  /* 三次模擬考的節次表，取自模擬考日程表。
+     學測本身只列日期，因為各節時間要以大考中心公告為準。 */
+  const EXAM_PLAN_SEED = [
+    {
+      name: '第一次學測模擬考',
+      days: [
+        { date: '2026-09-02', slots: [
+          { time: '08:10–09:50', subject: '英文' },
+          { time: '10:10–12:00', subject: '自然' },
+          { time: '13:10–14:40', subject: '國語文綜合能力測驗' },
+          { time: '15:10–16:00', subject: '英聽（彈性加考）' }
+        ] },
+        { date: '2026-09-03', slots: [
+          { time: '08:10–09:50', subject: '數學' },
+          { time: '10:10–12:00', subject: '社會' },
+          { time: '13:10–14:40', subject: '國語文寫作能力測驗' }
+        ] }
+      ]
+    },
+    {
+      name: '第二次學測模擬考',
+      days: [
+        { date: '2026-10-28', slots: [
+          { time: '08:10–09:50', subject: '英文' },
+          { time: '10:10–12:00', subject: '自然' },
+          { time: '13:10–14:40', subject: '國語文綜合能力測驗' },
+          { time: '15:00–16:40', subject: '數學B' }
+        ] },
+        { date: '2026-10-29', slots: [
+          { time: '08:10–09:50', subject: '數學A' },
+          { time: '10:10–12:00', subject: '社會' },
+          { time: '13:10–14:40', subject: '國語文寫作能力測驗' }
+        ] }
+      ]
+    },
+    {
+      name: '第三次學測模擬考',
+      days: [
+        { date: '2026-12-08', slots: [
+          { time: '08:10–09:50', subject: '英文' },
+          { time: '10:10–12:00', subject: '自然' },
+          { time: '13:10–14:40', subject: '國語文綜合能力測驗' },
+          { time: '15:00–16:40', subject: '數學B' }
+        ] },
+        { date: '2026-12-09', slots: [
+          { time: '08:10–09:50', subject: '數學A' },
+          { time: '10:10–12:00', subject: '社會' },
+          { time: '13:10–14:40', subject: '國語文寫作能力測驗' }
+        ] }
+      ]
+    },
+    {
+      name: '大學學科能力測驗',
+      days: [
+        { date: '2027-01-22', slots: [{ time: '', subject: '各節時間依大考中心公告' }] },
+        { date: '2027-01-23', slots: [{ time: '', subject: '' }] },
+        { date: '2027-01-24', slots: [{ time: '', subject: '' }] }
+      ]
+    }
+  ];
+
+  /* 各次模擬考的考試範圍 */
+  const EXAM_SCOPES = {
+    '第一次學測模擬考': [
+      ['國文', '第一～三冊'], ['英文', '第一～三冊'],
+      ['數學A／B', '第一～二冊（不分卷）'],
+      ['自然', '物理・化學・生物・地科（全）'],
+      ['社會', '歷史、地理 第一～二冊；公民 社會政治＋法律']
+    ],
+    '第二次學測模擬考': [
+      ['國文', '第一～四冊'], ['英文', '第一～四冊'],
+      ['數學A', '第一～二冊＋數A第三冊'], ['數學B', '第一～二冊＋數B第三冊'],
+      ['自然', '各科（全）＋探究與實作'],
+      ['社會', '歷史、地理、公民 第一～三冊']
+    ],
+    '第三次學測模擬考': [
+      ['國文', '第一～五冊'], ['英文', '第一～五冊'],
+      ['數學A', '第一～二冊＋數A第三～四冊'], ['數學B', '第一～二冊＋數B第三～四冊'],
+      ['自然', '各科（全）＋探究與實作'],
+      ['社會', '歷史、地理、公民 第一～三冊（學測範圍）']
+    ]
+  };
 
   function renderAgenda() {
     const list = store.data.events.slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -817,21 +925,42 @@
 
   function renderPlan() {
     const plan = store.data.examPlan;
-    $('#planDays').innerHTML = [1, 2].map((day) => {
-      const rows = plan.filter((r) => r.day === day);
+    if (!plan.length) {
+      $('#planDays').innerHTML = '<p class="plan-empty">還沒有考程。按上方按鈕帶入。</p>';
+      return;
+    }
+    const t = today();
+    $('#planDays').innerHTML = plan.map((ex) => {
+      const first = ex.days[0]?.date || '';
+      const left = first ? daysBetween(t, first) : null;
+      const past = left !== null && left < 0;
+      const scope = EXAM_SCOPES[ex.name];
+
       return `
-        <div class="plan-day">
-          <h3 class="plan-h">第 ${day} 天</h3>
-          ${rows.length ? `<ul class="plan-rows">${rows.map((r) => `
-            <li class="plan-row">
-              <input type="text" class="plan-subject" data-plan="${r.id}" data-field="subject"
-                     value="${esc(r.subject)}" maxlength="20" aria-label="科目">
-              <input type="text" class="plan-time" data-plan="${r.id}" data-field="time"
-                     value="${esc(r.time)}" placeholder="時間" maxlength="20" aria-label="時間">
-              <button class="mi-del" type="button" data-plan-del="${r.id}" aria-label="刪除這一節">✕</button>
-            </li>`).join('')}</ul>` : '<p class="plan-empty">還沒有節次</p>'}
-          <button class="link-btn" type="button" data-plan-add="${day}">＋ 加一節</button>
-        </div>`;
+        <article class="plan-exam ${past ? 'is-past' : ''}">
+          <header class="plan-exam-head">
+            <h3>${esc(ex.name)}</h3>
+            <span class="plan-left">${
+              left === null ? '' : past ? '已考完' : left === 0 ? '就是今天' : `還有 ${left} 天`}</span>
+          </header>
+          <div class="plan-day-grid">
+            ${ex.days.map((d) => `
+              <div class="plan-day">
+                <p class="plan-h">${fmtDate(d.date)}</p>
+                <ul class="plan-rows">${d.slots.map((sl) => sl.subject || sl.time ? `
+                  <li class="plan-row">
+                    <span class="plan-time">${esc(sl.time) || '—'}</span>
+                    <span class="plan-subject">${esc(sl.subject)}</span>
+                  </li>` : '').join('')}</ul>
+              </div>`).join('')}
+          </div>
+          ${scope ? `
+            <details class="plan-scope">
+              <summary>考試範圍</summary>
+              <ul class="scope-rows">${scope.map(([s, r]) =>
+                `<li><span class="scope-subject">${esc(s)}</span><span class="scope-range">${esc(r)}</span></li>`).join('')}</ul>
+            </details>` : ''}
+        </article>`;
     }).join('');
   }
 
@@ -861,32 +990,21 @@
 
     $('#planSeed').addEventListener('click', () => {
       if (store.data.examPlan.length &&
-          !confirm('這會覆蓋目前的考程表內容，確定嗎？')) return;
-      store.data.examPlan = EXAM_PLAN_SEED.map((r) => ({ ...r, id: uid() }));
+          !confirm('這會覆蓋目前的考程表，確定嗎？')) return;
+      store.data.examPlan = JSON.parse(JSON.stringify(EXAM_PLAN_SEED));
       save();
       renderPlan();
-      toast('已帶入考科順序，時間請依大考中心公告填寫。');
+      toast('已帶入三次模擬考與學測的考程。');
     });
 
-    $('#planDays').addEventListener('input', (e) => {
-      const el = e.target.closest('[data-plan]');
-      if (!el) return;
-      const row = store.data.examPlan.find((r) => r.id === el.dataset.plan);
-      if (row) { row[el.dataset.field] = el.value; store.save(); }
-    });
-
-    $('#planDays').addEventListener('click', (e) => {
-      const add = e.target.closest('[data-plan-add]');
-      const del = e.target.closest('[data-plan-del]');
-      if (add) {
-        store.data.examPlan.push({ id: uid(), day: Number(add.dataset.planAdd), subject: '', time: '' });
-        save();
-        renderPlan();
-      } else if (del) {
-        store.data.examPlan = store.data.examPlan.filter((r) => r.id !== del.dataset.planDel);
-        save();
-        renderPlan();
-      }
+    $('#agendaSeed').addEventListener('click', () => {
+      // 已存在同名同日的就跳過，重複按不會長出一堆重複項目
+      const has = (e) => store.data.events.some((x) => x.name === e.name && x.date === e.date);
+      const added = SCHOOL_EVENTS.filter((e) => !has(e));
+      if (!added.length) { toast('行事曆的日程都已經在清單裡了。'); return; }
+      added.forEach((e) => store.data.events.push({ ...e, id: uid() }));
+      save();
+      toast(`已加入 ${added.length} 筆校內行事曆日程。`);
     });
 
     renderPlan();
@@ -2383,6 +2501,8 @@
   function bindTabs() {
     document.body.dataset.view = 'today';
     $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.view)));
+    // 設定移到標題列，分頁列才不會擠到六格
+    $('#settingsOpen').addEventListener('click', () => setView('settings'));
 
     // 桌機顯示全部，不受分頁影響；縮回手機時回到「今日」
     const mq = window.matchMedia('(max-width: 980px)');

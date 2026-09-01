@@ -157,6 +157,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .brand h1 { font-size: 22px; letter-spacing: .02em; }
 .brand-sub { font-size: 13.5px; color: var(--text-2); line-height: 1.4; }
 
+.header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.icon-gear { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+/* 設定在桌機是頁面上的一區，不需要這顆按鈕 */
+@media (min-width: 981px) { #settingsOpen { display: none; } }
+
 .icon-btn {
   width: 44px; height: 44px;
   display: grid; place-items: center;
@@ -814,17 +819,57 @@ input[type="range"]::-moz-range-thumb {
 .plan-note p { font-size: 13px; color: var(--text-2); line-height: 1.7; margin-bottom: 10px; }
 .plan-note strong { color: var(--accent-ink); }
 
-.plan-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 640px) { .plan-days { grid-template-columns: minmax(0, 1fr); } }
-.plan-h {
-  font-family: var(--sans); font-size: 12.5px; font-weight: 500;
-  letter-spacing: .08em; color: var(--text-2); margin-bottom: 9px;
+.agenda-seed { margin-bottom: 12px; }
+
+.plan-days { display: grid; gap: 16px; }
+
+.plan-exam {
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  padding: 15px 17px;
+  background: var(--bg);
+  transition: opacity .3s var(--ease);
 }
-.plan-rows { display: grid; gap: 7px; margin-bottom: 9px; }
-.plan-row { display: flex; gap: 6px; align-items: center; }
-.plan-row .plan-subject { flex: 2 1 0; min-height: 38px; padding: 8px 11px; font-size: 13.5px; }
-.plan-row .plan-time { flex: 1 1 0; min-height: 38px; padding: 8px 11px; font-size: 13px; }
-.plan-empty { font-size: 13px; color: var(--text-2); margin-bottom: 9px; }
+.plan-exam.is-past { opacity: .52; }
+.plan-exam-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 13px;
+}
+.plan-exam-head h3 { font-size: 15.5px; }
+.plan-left {
+  font-size: 12.5px; color: var(--accent-ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.plan-exam.is-past .plan-left { color: var(--text-2); }
+
+.plan-day-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 640px) { .plan-day-grid { grid-template-columns: minmax(0, 1fr); } }
+.plan-h {
+  font-size: 12.5px; font-weight: 500; color: var(--text-2);
+  padding-bottom: 6px; margin-bottom: 7px;
+  border-bottom: 1px solid var(--border);
+}
+.plan-rows { display: grid; gap: 5px; }
+.plan-row { display: flex; gap: 10px; align-items: baseline; font-size: 13px; line-height: 1.5; }
+.plan-time {
+  flex-shrink: 0; width: 88px;
+  color: var(--text-2); font-variant-numeric: tabular-nums; font-size: 12px;
+}
+.plan-subject { flex: 1; min-width: 0; }
+.plan-empty { font-size: 13px; color: var(--text-2); }
+
+.plan-scope { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border); }
+.plan-scope summary {
+  font-size: 12.5px; color: var(--text-2); cursor: pointer;
+  list-style: none; padding: 3px 0;
+}
+.plan-scope summary::-webkit-details-marker { display: none; }
+.plan-scope summary::before { content: "▸ "; }
+.plan-scope[open] summary::before { content: "▾ "; }
+.scope-rows { display: grid; gap: 5px; margin-top: 8px; }
+.scope-rows li { display: flex; gap: 10px; font-size: 12.5px; line-height: 1.55; }
+.scope-subject { flex-shrink: 0; width: 68px; color: var(--text-2); }
+.scope-range { flex: 1; min-width: 0; }
 
 /* ---------- 每日金句 ---------- */
 .card-quote {
@@ -1457,7 +1502,7 @@ dialog .dialog-note { font-size: 13.5px; color: var(--text-2); margin-bottom: 16
     left: 0; right: 0; bottom: 0;
     z-index: 400;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 2px;
     padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
     background: color-mix(in srgb, var(--surface) 88%, transparent);
